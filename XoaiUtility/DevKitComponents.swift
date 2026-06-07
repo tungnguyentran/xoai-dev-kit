@@ -395,6 +395,7 @@ struct SearchField: View {
     @Binding var text: String
     var placeholder: String
     var error: Bool = false
+    var errorText: String? = nil
     var width: CGFloat = 180
 
     private var t: ThemeTokens { theme.t }
@@ -423,5 +424,6 @@ struct SearchField: View {
         .background(t.field, in: RoundedRectangle(cornerRadius: 7))
         .overlay(RoundedRectangle(cornerRadius: 7)
             .strokeBorder(error ? t.danger : t.borderSoft, lineWidth: 1))
+        .help(error ? (errorText ?? "") : "")
     }
 }

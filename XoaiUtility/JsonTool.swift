@@ -324,7 +324,8 @@ struct JsonTool: View {
                 if case .ok = parse {
                     SearchField(text: $query,
                                 placeholder: loc.s.searchPlaceholder,
-                                error: search.hasRegexError)
+                                error: search.hasRegexError,
+                                errorText: loc.s.searchRegexError)
                     Btn(title: ".*", active: isRegex, mono: true, help: "Regex") { isRegex.toggle() }
                     if view == "text" {
                         if search.isActive {
@@ -366,18 +367,18 @@ struct JsonTool: View {
                 CodeTextView(attributed: highlightedText(), scrollTo: currentMatchRange)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             } else {
-                ScrollView {
-                    if filterTree && search.isActive && !subtreeContainsMatch(key: nil, node: JSONNode.build(from: obj), search) {
-                        EmptyHint(hint: loc.s.searchNoMatches)
-                    } else {
+                if filterTree && search.isActive && !subtreeContainsMatch(key: nil, node: JSONNode.build(from: obj), search) {
+                    EmptyHint(hint: loc.s.searchNoMatches)
+                } else {
+                    ScrollView {
                         JSONTreeRow(key: nil, isIndex: false, node: JSONNode.build(from: obj),
                                     depth: 0, last: true, search: search, filterTree: filterTree)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 12)
                             .frame(maxWidth: .infinity, alignment: .topLeading)
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         case .empty:
             EmptyHint(hint: loc.s.emptyResult)
