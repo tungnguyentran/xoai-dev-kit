@@ -30,15 +30,15 @@ enum URLCodec {
         return s
     }()
 
-    static func encode(_ s: String, component: Bool) -> CodecResult {
+    static func encode(_ s: String, component: Bool, _ str: Strings) -> CodecResult {
         guard let out = s.addingPercentEncoding(withAllowedCharacters: component ? componentAllowed : uriAllowed)
-        else { return .error("Không thể mã hóa") }
+        else { return .error(str.urlCantEncode) }
         return .ok(out)
     }
 
-    static func decode(_ s: String, component: Bool) -> CodecResult {
+    static func decode(_ s: String, component: Bool, _ str: Strings) -> CodecResult {
         if component {
-            guard let out = s.removingPercentEncoding else { return .error("Chuỗi mã hóa không hợp lệ") }
+            guard let out = s.removingPercentEncoding else { return .error(str.urlInvalidEncoded) }
             return .ok(out)
         }
         // decodeURI: leave reserved chars percent-encoded.
@@ -67,14 +67,15 @@ enum URLCodec {
                 out.append(bytes[i]); i += 1
             }
         }
-        guard let str = String(bytes: out, encoding: .utf8) else { return .error("Chuỗi mã hóa không hợp lệ") }
-        return .ok(str)
+        guard let str2 = String(bytes: out, encoding: .utf8) else { return .error(str.urlInvalidEncoded) }
+        return .ok(str2)
     }
 }
 
 struct UrlTool: View {
     @EnvironmentObject var theme: ThemeManager
     @EnvironmentObject var model: AppModel
+    @EnvironmentObject var loc: LocalizationManager
 
     @State private var input = "https://api.dev.io/search?q=xin chào&tags=a,b&page=2"
     @State private var mode = "encode"
@@ -85,8 +86,8 @@ struct UrlTool: View {
     private var result: CodecResult {
         if input.isEmpty { return .empty }
         let component = scope == "component"
-        return mode == "encode" ? URLCodec.encode(input, component: component)
-                                : URLCodec.decode(input, component: component)
+        return mode == "encode" ? URLCodec.encode(input, component: component, loc.s)
+                                : URLCodec.decode(input, component: component, loc.s)
     }
 
     var body: some View {
@@ -106,27 +107,27 @@ struct UrlTool: View {
 
     private var inputPane: some View {
         Pane(
-            label: mode == "encode" ? "Văn bản gốc" : "Chuỗi đã mã hóa",
+            label: mode == "encode" ? loc.s.urlInEncode : loc.s.urlInDecode,
             grow: true,
             right: AnyView(HStack(spacing: 4) {
-                Segmented(options: [(value: "encode", label: "Encode"), (value: "decode", label: "Decode")],
+                Segmented(options: [(value: "encode", label: loc.s.segEncode), (value: "decode", label: loc.s.segDecode)],
                           selection: $mode)
-                Btn(icon: DKIcon.swap, help: "Đảo chiều: chuyển kết quả thành đầu vào") {
+                Btn(icon: DKIcon.swap, help: loc.s.swapTitle) {
                     if result.isOK { input = result.value; mode = mode == "encode" ? "decode" : "encode" }
                 }
-                Btn(icon: DKIcon.paste, title: "Dán") { input = Clip.paste() }
-                Btn(icon: DKIcon.clear, title: "Xóa") { input = "" }
+                Btn(icon: DKIcon.paste, title: loc.s.btnPaste) { input = Clip.paste() }
+                Btn(icon: DKIcon.clear, title: loc.s.btnClear) { input = "" }
             }),
             footer: AnyView(HStack {
                 CountBar(text: input)
                 Spacer()
                 MonoPicker(options: [(value: "component", label: "encodeURIComponent"),
-                                     (value: "full", label: "encodeURI (toàn URL)")],
+                                     (value: "full", label: loc.s.urlScopeFull)],
                            selection: $scope)
                     .frame(width: 190)
             })
         ) {
-            CodeArea(text: $input, placeholder: "Nhập văn bản hoặc URL…")
+            CodeArea(text: $input, placeholder: loc.s.urlPlaceholder)
         }
     }
 }
@@ -134,12 +135,14 @@ struct UrlTool: View {
 /// Output pane shared by URL & Base64 tools.
 struct CodecOutputPane: View {
     @EnvironmentObject var theme: ThemeManager
+    @EnvironmentObject var loc: LocalizationManager
     let result: CodecResult
-    var label: String = "Kết quả"
+    /// nil → localized "Result".
+    var label: String? = nil
 
     var body: some View {
         Pane(
-            label: label,
+            label: label ?? loc.s.result,
             grow: true,
             right: AnyView(CopyBtn(small: true) { result.value }),
             footer: result.isOK ? AnyView(HStack { CountBar(text: result.value); Spacer() }) : nil
@@ -148,10 +151,10 @@ struct CodecOutputPane: View {
             case .ok(let v):
                 OutputText(text: v)
             case .empty:
-                EmptyHint(hint: "Kết quả sẽ hiện ở đây")
+                EmptyHint(hint: loc.s.emptyResult)
             case .error(let msg):
                 VStack(spacing: 0) {
-                    EmptyHint(hint: "Không thể giải mã")
+                    EmptyHint(hint: loc.s.urlCantDecode)
                     Banner(message: msg)
                 }
             }
