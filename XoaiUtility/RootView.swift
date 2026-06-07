@@ -10,6 +10,7 @@ import SwiftUI
 struct RootView: View {
     @EnvironmentObject var theme: ThemeManager
     @EnvironmentObject var model: AppModel
+    @EnvironmentObject var loc: LocalizationManager
 
     private var t: ThemeTokens { theme.t }
 
@@ -20,6 +21,7 @@ struct RootView: View {
         }
         .frame(minWidth: 920, minHeight: 600)
         .background(t.bg)
+        .environment(\.locale, loc.locale)
         .preferredColorScheme(theme.colorScheme)
     }
 
