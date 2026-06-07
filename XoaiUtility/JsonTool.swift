@@ -62,7 +62,8 @@ enum JSONParse {
     case ok(Any)
     case error(line: Int?, col: Int?, message: String)
 
-    /// Error message for logging — matches the Banner text; nil when not an error.
+    /// Error message for diagnostic logging (not localized); nil when not an error.
+    /// The user-facing Banner is localized separately via `JsonTool.bannerText`.
     var errorText: String? {
         guard case let .error(line, col, message) = self else { return nil }
         return (line != nil ? "Dòng \(line!), cột \(col ?? 0) — " : "") + message
