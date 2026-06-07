@@ -78,7 +78,7 @@ struct UrlTool: View {
     @EnvironmentObject var loc: LocalizationManager
 
     @State private var input = "https://api.dev.io/search?q=xin chào&tags=a,b&page=2"
-    @State private var mode = "encode"
+    @State private var mode = "decode"
     @State private var scope = "component"
 
     private var t: ThemeTokens { theme.t }
