@@ -127,6 +127,7 @@ struct UrlTool: View {
     @State private var input = "https://api.dev.io/search?q=xin chào&tags=a,b&page=2"
     @State private var mode = "decode"
     @State private var scope = "component"
+    @State private var outputView = "text"   // "text" | "table"
 
     private var t: ThemeTokens { theme.t }
 
@@ -141,7 +142,8 @@ struct UrlTool: View {
         ToolFrame {
             inputPane
         } output: {
-            CodecOutputPane(result: result)
+            UrlOutputPane(result: result, input: input,
+                          showToggle: mode == "decode", outputView: $outputView)
         }
         .onAppear(perform: applySeed)
         .onChange(of: model.seed?.n) { applySeed() }
@@ -203,6 +205,55 @@ struct CodecOutputPane: View {
                 VStack(spacing: 0) {
                     EmptyHint(hint: loc.s.urlCantDecode)
                     Banner(message: msg)
+                }
+            }
+        }
+    }
+}
+
+/// URL-specific output pane: adds a Text/Table toggle (decode mode only) that
+/// switches between the decoded text and a key/value table of the raw input.
+struct UrlOutputPane: View {
+    @EnvironmentObject var theme: ThemeManager
+    @EnvironmentObject var loc: LocalizationManager
+    let result: CodecResult
+    let input: String
+    let showToggle: Bool
+    @Binding var outputView: String
+
+    private var showTable: Bool { showToggle && outputView == "table" }
+
+    var body: some View {
+        Pane(
+            label: loc.s.result,
+            grow: true,
+            right: AnyView(HStack(spacing: 4) {
+                if showToggle {
+                    Segmented(options: [(value: "text", label: loc.s.urlViewText),
+                                        (value: "table", label: loc.s.urlViewTable)],
+                              selection: $outputView)
+                }
+                CopyBtn(small: true) { result.value }
+            }),
+            footer: result.isOK ? AnyView(HStack { CountBar(text: result.value); Spacer() }) : nil
+        ) {
+            if showTable {
+                if input.isEmpty {
+                    EmptyHint(hint: loc.s.emptyResult)
+                } else {
+                    KVTable(pairs: FormCodec.pairs(input))
+                }
+            } else {
+                switch result {
+                case .ok(let v):
+                    OutputText(text: v)
+                case .empty:
+                    EmptyHint(hint: loc.s.emptyResult)
+                case .error(let msg):
+                    VStack(spacing: 0) {
+                        EmptyHint(hint: loc.s.urlCantDecode)
+                        Banner(message: msg)
+                    }
                 }
             }
         }
