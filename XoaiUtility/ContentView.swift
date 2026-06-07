@@ -8,8 +8,13 @@
 import SwiftUI
 
 struct ContentView: View {
+    @StateObject private var theme = ThemeManager()
+    @StateObject private var model = AppModel()
+
     var body: some View {
-        JSONFormatterView()
+        RootView()
+            .environmentObject(theme)
+            .environmentObject(model)
     }
 }
 
