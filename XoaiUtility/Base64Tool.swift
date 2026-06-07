@@ -18,15 +18,15 @@ enum Base64Codec {
         return .ok(out)
     }
 
-    static func decode(_ s: String) -> CodecResult {
-        var str = s.trimmingCharacters(in: .whitespacesAndNewlines)
+    static func decode(_ s: String, _ str: Strings) -> CodecResult {
+        var b64 = s.trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: "-", with: "+")
             .replacingOccurrences(of: "_", with: "/")
-        str = str.components(separatedBy: .whitespacesAndNewlines).joined()
-        while str.count % 4 != 0 { str += "=" }
-        guard let data = Data(base64Encoded: str),
+        b64 = b64.components(separatedBy: .whitespacesAndNewlines).joined()
+        while b64.count % 4 != 0 { b64 += "=" }
+        guard let data = Data(base64Encoded: b64),
               let text = String(data: data, encoding: .utf8) else {
-            return .error("Chuỗi Base64 không hợp lệ")
+            return .error(str.b64Invalid)
         }
         return .ok(text)
     }
@@ -35,6 +35,7 @@ enum Base64Codec {
 struct Base64Tool: View {
     @EnvironmentObject var theme: ThemeManager
     @EnvironmentObject var model: AppModel
+    @EnvironmentObject var loc: LocalizationManager
 
     @State private var input = "Xin chào, DevKit! 🛠"
     @State private var mode = "encode"
@@ -44,7 +45,7 @@ struct Base64Tool: View {
 
     private var result: CodecResult {
         if input.isEmpty { return .empty }
-        return mode == "encode" ? Base64Codec.encode(input, urlSafe: urlSafe) : Base64Codec.decode(input)
+        return mode == "encode" ? Base64Codec.encode(input, urlSafe: urlSafe) : Base64Codec.decode(input, loc.s)
     }
 
     var body: some View {
@@ -64,16 +65,16 @@ struct Base64Tool: View {
 
     private var inputPane: some View {
         Pane(
-            label: mode == "encode" ? "Văn bản gốc" : "Chuỗi Base64",
+            label: mode == "encode" ? loc.s.b64InEncode : loc.s.b64InDecode,
             grow: true,
             right: AnyView(HStack(spacing: 4) {
-                Segmented(options: [(value: "encode", label: "Encode"), (value: "decode", label: "Decode")],
+                Segmented(options: [(value: "encode", label: loc.s.segEncode), (value: "decode", label: loc.s.segDecode)],
                           selection: $mode)
-                Btn(icon: DKIcon.swap, help: "Đảo chiều") {
+                Btn(icon: DKIcon.swap, help: loc.s.swapShort) {
                     if result.isOK { input = result.value; mode = mode == "encode" ? "decode" : "encode" }
                 }
-                Btn(icon: DKIcon.paste, title: "Dán") { input = Clip.paste() }
-                Btn(icon: DKIcon.clear, title: "Xóa") { input = "" }
+                Btn(icon: DKIcon.paste, title: loc.s.btnPaste) { input = Clip.paste() }
+                Btn(icon: DKIcon.clear, title: loc.s.btnClear) { input = "" }
             }),
             footer: AnyView(HStack {
                 CountBar(text: input)
@@ -85,7 +86,7 @@ struct Base64Tool: View {
                 .tint(t.accent)
             })
         ) {
-            CodeArea(text: $input, placeholder: mode == "encode" ? "Nhập văn bản…" : "Dán chuỗi Base64…")
+            CodeArea(text: $input, placeholder: mode == "encode" ? loc.s.b64PhEncode : loc.s.b64PhDecode)
         }
     }
 }
