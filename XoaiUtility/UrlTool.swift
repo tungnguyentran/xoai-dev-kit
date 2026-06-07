@@ -72,6 +72,53 @@ enum URLCodec {
     }
 }
 
+/// One decoded key/value pair from a form-encoded body or URL query.
+struct FormPair: Identifiable {
+    let id: Int
+    let key: String
+    let value: String
+}
+
+enum FormCodec {
+    /// Split a form-encoded body (or a URL's query) into decoded key/value pairs.
+    /// Splits on `&`/`=` *first*, then percent-decodes each key and value
+    /// independently with form semantics (`+` → space). Invalid percent-encoding
+    /// in a piece falls back to the raw piece rather than dropping the row.
+    static func pairs(_ s: String) -> [FormPair] {
+        // If a full URL, parse only the query: after the first '?', before '#'.
+        var query = s
+        if let q = query.firstIndex(of: "?") {
+            query = String(query[query.index(after: q)...])
+        }
+        if let h = query.firstIndex(of: "#") {
+            query = String(query[..<h])
+        }
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { return [] }
+
+        return trimmed.split(separator: "&", omittingEmptySubsequences: true)
+            .enumerated()
+            .map { index, segment in
+                let part = String(segment)
+                let key: String, value: String
+                if let eq = part.firstIndex(of: "=") {
+                    key = String(part[..<eq])
+                    value = String(part[part.index(after: eq)...])
+                } else {
+                    key = part
+                    value = ""
+                }
+                return FormPair(id: index, key: decode(key), value: decode(value))
+            }
+    }
+
+    /// Form-decode a single key or value: `+` → space, then percent-decode.
+    private static func decode(_ s: String) -> String {
+        let spaced = s.replacingOccurrences(of: "+", with: " ")
+        return spaced.removingPercentEncoding ?? spaced
+    }
+}
+
 struct UrlTool: View {
     @EnvironmentObject var theme: ThemeManager
     @EnvironmentObject var model: AppModel
@@ -80,6 +127,7 @@ struct UrlTool: View {
     @State private var input = "https://api.dev.io/search?q=xin chào&tags=a,b&page=2"
     @State private var mode = "decode"
     @State private var scope = "component"
+    @State private var outputView = "text"   // "text" | "table"
 
     private var t: ThemeTokens { theme.t }
 
@@ -94,7 +142,8 @@ struct UrlTool: View {
         ToolFrame {
             inputPane
         } output: {
-            CodecOutputPane(result: result)
+            UrlOutputPane(result: result, input: input,
+                          showToggle: mode == "decode", outputView: $outputView)
         }
         .onAppear(perform: applySeed)
         .onChange(of: model.seed?.n) { applySeed() }
@@ -156,6 +205,55 @@ struct CodecOutputPane: View {
                 VStack(spacing: 0) {
                     EmptyHint(hint: loc.s.urlCantDecode)
                     Banner(message: msg)
+                }
+            }
+        }
+    }
+}
+
+/// URL-specific output pane: adds a Text/Table toggle (decode mode only) that
+/// switches between the decoded text and a key/value table of the raw input.
+struct UrlOutputPane: View {
+    @EnvironmentObject var theme: ThemeManager
+    @EnvironmentObject var loc: LocalizationManager
+    let result: CodecResult
+    let input: String
+    let showToggle: Bool
+    @Binding var outputView: String
+
+    private var showTable: Bool { showToggle && outputView == "table" }
+
+    var body: some View {
+        Pane(
+            label: loc.s.result,
+            grow: true,
+            right: AnyView(HStack(spacing: 4) {
+                if showToggle {
+                    Segmented(options: [(value: "text", label: loc.s.urlViewText),
+                                        (value: "table", label: loc.s.urlViewTable)],
+                              selection: $outputView)
+                }
+                CopyBtn(small: true) { result.value }
+            }),
+            footer: result.isOK ? AnyView(HStack { CountBar(text: result.value); Spacer() }) : nil
+        ) {
+            if showTable {
+                if input.isEmpty {
+                    EmptyHint(hint: loc.s.emptyResult)
+                } else {
+                    KVTable(pairs: FormCodec.pairs(input))
+                }
+            } else {
+                switch result {
+                case .ok(let v):
+                    OutputText(text: v)
+                case .empty:
+                    EmptyHint(hint: loc.s.emptyResult)
+                case .error(let msg):
+                    VStack(spacing: 0) {
+                        EmptyHint(hint: loc.s.urlCantDecode)
+                        Banner(message: msg)
+                    }
                 }
             }
         }

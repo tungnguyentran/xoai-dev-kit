@@ -42,6 +42,7 @@ struct Strings {
     // URL
     let urlInEncode, urlInDecode, urlPlaceholder, urlScopeFull: String
     let urlCantDecode, urlCantEncode, urlInvalidEncoded: String
+    let urlViewText, urlViewTable, tableKey, tableValue: String
     // Base64
     let b64InEncode, b64InDecode, b64PhEncode, b64PhDecode, b64Invalid: String
     // JWT
@@ -83,6 +84,8 @@ struct Strings {
         urlPlaceholder: "Nhập văn bản hoặc URL…", urlScopeFull: "encodeURI (toàn URL)",
         urlCantDecode: "Không thể giải mã", urlCantEncode: "Không thể mã hóa",
         urlInvalidEncoded: "Chuỗi mã hóa không hợp lệ",
+        urlViewText: "Văn bản", urlViewTable: "Bảng",
+        tableKey: "Khóa", tableValue: "Giá trị",
         b64InEncode: "Văn bản gốc", b64InDecode: "Chuỗi Base64",
         b64PhEncode: "Nhập văn bản…", b64PhDecode: "Dán chuỗi Base64…",
         b64Invalid: "Chuỗi Base64 không hợp lệ",
@@ -125,6 +128,8 @@ struct Strings {
         urlPlaceholder: "Enter text or a URL…", urlScopeFull: "encodeURI (full URL)",
         urlCantDecode: "Cannot decode", urlCantEncode: "Cannot encode",
         urlInvalidEncoded: "Invalid encoded string",
+        urlViewText: "Text", urlViewTable: "Table",
+        tableKey: "Key", tableValue: "Value",
         b64InEncode: "Source text", b64InDecode: "Base64 string",
         b64PhEncode: "Enter text…", b64PhDecode: "Paste a Base64 string…",
         b64Invalid: "Invalid Base64 string",
