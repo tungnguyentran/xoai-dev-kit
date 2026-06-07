@@ -28,16 +28,11 @@ struct Sidebar: View {
     }
 
     private var brand: some View {
-        HStack(spacing: 9) {
-            Text(">")
-                .font(DK.mono(14, weight: .bold))
-                .foregroundStyle(t.accentInk)
-                .frame(width: 26, height: 26)
-                .background(t.accent, in: RoundedRectangle(cornerRadius: 7))
-                .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(t.accentLine, lineWidth: 1))
+        HStack(spacing: 10) {
+            MangoMark(size: 30)
             VStack(alignment: .leading, spacing: 1) {
                 Text("DevKit").font(DK.ui(14, weight: .bold)).foregroundStyle(t.text)
-                Text("dev toolkit").font(DK.mono(10.5)).foregroundStyle(t.textFaint)
+                Text("by xoai").font(DK.mono(10.5)).foregroundStyle(t.textFaint)
             }
         }
         .padding(.horizontal, 16)
