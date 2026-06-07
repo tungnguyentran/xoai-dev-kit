@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AppKit
 
 // MARK: - Model
 
@@ -223,6 +224,23 @@ struct JsonTool: View {
         currentMatch = (currentMatch + delta + matchRanges.count) % matchRanges.count
     }
 
+    /// JSON syntax colors with search-match backgrounds overlaid.
+    private func highlightedText() -> NSAttributedString {
+        let base = jsonAttributed(pretty, t)
+        guard search.isActive, !matchRanges.isEmpty else { return base }
+        let m = NSMutableAttributedString(attributedString: base)
+        for (i, r) in matchRanges.enumerated() {
+            let color = i == currentMatch ? t.searchActive : t.searchHit
+            m.addAttribute(.backgroundColor, value: NSColor(color), range: r)
+        }
+        return m
+    }
+
+    private var currentMatchRange: NSRange? {
+        guard search.isActive, matchRanges.indices.contains(currentMatch) else { return nil }
+        return matchRanges[currentMatch]
+    }
+
     var body: some View {
         ToolFrame {
             inputPane
@@ -345,7 +363,7 @@ struct JsonTool: View {
         switch parse {
         case .ok(let obj):
             if view == "text" {
-                CodeTextView(attributed: jsonAttributed(pretty, t))
+                CodeTextView(attributed: highlightedText(), scrollTo: currentMatchRange)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             } else {
                 ScrollView {
