@@ -387,3 +387,41 @@ struct OutputText: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
+
+// MARK: - Search field
+
+struct SearchField: View {
+    @EnvironmentObject var theme: ThemeManager
+    @Binding var text: String
+    var placeholder: String
+    var error: Bool = false
+    var width: CGFloat = 180
+
+    private var t: ThemeTokens { theme.t }
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 11))
+                .foregroundStyle(error ? t.danger : t.textFaint)
+            TextField(placeholder, text: $text)
+                .textFieldStyle(.plain)
+                .font(DK.mono(12))
+                .foregroundStyle(t.text)
+                .tint(t.accent)
+            if !text.isEmpty {
+                Button { text = "" } label: {
+                    Image(systemName: "xmark.circle.fill").font(.system(size: 11))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(t.textFaint)
+                .help("Clear search")
+            }
+        }
+        .padding(.horizontal, 8)
+        .frame(width: width, height: 26)
+        .background(t.field, in: RoundedRectangle(cornerRadius: 7))
+        .overlay(RoundedRectangle(cornerRadius: 7)
+            .strokeBorder(error ? t.danger : t.borderSoft, lineWidth: 1))
+    }
+}
