@@ -5,6 +5,8 @@
 
 import Testing
 import Foundation
+import SwiftUI
+import AppKit
 @testable import XoaiUtility
 
 struct JSONSearchTests {
@@ -94,5 +96,18 @@ struct JSONSearchTests {
         let s = JSONSearch(query: "zzz", isRegex: false)
         let root = node(#"{"a": [1, 2, {"b": "c"}]}"#)
         #expect(!subtreeContainsMatch(key: nil, node: root, s))
+    }
+
+    // MARK: theme
+
+    @Test func searchTokensAreDistinctAndVisible() {
+        for tk in [ThemeTokens.dark, ThemeTokens.light] {
+            let hit = NSColor(tk.searchHit).usingColorSpace(.sRGB)!
+            let active = NSColor(tk.searchActive).usingColorSpace(.sRGB)!
+            #expect(hit.alphaComponent > 0)
+            #expect(active.alphaComponent > 0)
+            // current-match must read stronger than a plain hit
+            #expect(active.alphaComponent >= hit.alphaComponent)
+        }
     }
 }
