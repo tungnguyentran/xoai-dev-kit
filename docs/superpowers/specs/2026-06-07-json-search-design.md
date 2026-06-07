@@ -80,6 +80,13 @@ func subtreeContainsMatch(key: String?, node: JSONNode, _ search: JSONSearch) ->
 Scalar value text for matching uses the same literal as the tree leaf renders
 (e.g. number literal as stored, `true`/`false`, `null`, raw string contents
 without surrounding quotes) so what the user sees is what they search.
+`nodeSelfMatches` must mirror `JSONTreeRow.keyValueText` exactly — treat that
+method as the source of truth for each scalar's rendered form.
+
+Note a deliberate consequence of per-view fit: the **text** view searches the
+serialized `pretty` string where strings *are* quoted, while the **tree**
+searches unquoted scalar contents. A query containing a `"` can therefore match
+in Text but not Tree. This is expected, not a bug.
 
 ### State in `JsonTool`
 
@@ -91,9 +98,13 @@ without surrounding quotes) so what the user sees is what they search.
 ```
 
 - `search` is derived: `JSONSearch(query: query, isRegex: isRegex)`.
-- `currentMatch` resets to 0 whenever `query`, `isRegex`, or `indent` changes
-  (indent changes re-flow `pretty`, invalidating ranges).
+- `currentMatch` resets to 0 whenever the match list can change: `query`,
+  `isRegex`, `indent`, **and `input`/`pretty`** (a history seed load via
+  `applySeed` replaces `input`, re-flowing `pretty` and invalidating ranges).
+  Simplest: reset whenever `pretty` changes.
 - Search state is shared across views, so it persists when toggling Text/Tree.
+- Contextual controls switch on the existing `view` string (`"text"`/`"tree"`),
+  the same gate `outputBody` already uses.
 
 ## Behavior detail
 
@@ -104,6 +115,11 @@ without surrounding quotes) so what the user sees is what they search.
    all matches use `t.searchHit`; the current match uses `t.searchActive`.
 3. `CodeTextView` gains an optional `scrollTo: NSRange?`; in `updateNSView` it
    calls `scrollRangeToVisible(_:)` and `showFindIndicator(for:)` for that range.
+   **Watch the existing early-return guard** (`textStorage.isEqual(to:)` skips
+   work when attributed content is unchanged) — the scroll/indicator call must
+   not be swallowed when only `scrollTo` changes. Stepping next/prev does change
+   the attributed string (the `searchActive` background moves), but the scroll
+   must fire on the `scrollTo`-changed path independently of the content guard.
 4. Header shows `currentMatch+1 / total`; up/down chevrons step `currentMatch`
    with wrap-around. No matches → `0/0`, nothing highlighted.
 
