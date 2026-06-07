@@ -10,6 +10,7 @@ import SwiftUI
 struct HistoryPanel: View {
     @EnvironmentObject var theme: ThemeManager
     @EnvironmentObject var model: AppModel
+    @EnvironmentObject var loc: LocalizationManager
 
     private var t: ThemeTokens { theme.t }
 
@@ -17,7 +18,7 @@ struct HistoryPanel: View {
         VStack(spacing: 0) {
             header
             if model.history.isEmpty {
-                Text("Các lần xử lý hợp lệ\nsẽ được lưu ở đây")
+                Text("\(loc.s.historyEmpty1)\n\(loc.s.historyEmpty2)")
                     .font(DK.ui(12))
                     .foregroundStyle(t.textFaint)
                     .multilineTextAlignment(.center)
@@ -41,13 +42,13 @@ struct HistoryPanel: View {
 
     private var header: some View {
         HStack {
-            Text("LỊCH SỬ")
+            Text(loc.s.historyTitle.uppercased())
                 .font(DK.ui(11.5, weight: .semibold))
                 .tracking(0.46)
                 .foregroundStyle(t.textDim)
             Spacer()
             if !model.history.isEmpty {
-                Btn(title: "Xóa hết") { model.clearHistory() }
+                Btn(title: loc.s.historyClear) { model.clearHistory() }
             }
         }
         .padding(.leading, 14)
@@ -59,6 +60,7 @@ struct HistoryPanel: View {
 
 private struct HistoryRow: View {
     @EnvironmentObject var theme: ThemeManager
+    @EnvironmentObject var loc: LocalizationManager
     let entry: HistoryEntry
     let action: () -> Void
 
@@ -74,11 +76,11 @@ private struct HistoryRow: View {
                         .frame(width: 18, height: 18)
                         .background(t.field, in: RoundedRectangle(cornerRadius: 5))
                         .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(t.borderSoft, lineWidth: 1))
-                    Text(entry.tool.shortName)
+                    Text(entry.tool.displayShortName(loc.s))
                         .font(DK.ui(11, weight: .semibold))
                         .foregroundStyle(t.textDim)
                     Spacer(minLength: 0)
-                    Text(Self.relative(entry.ts))
+                    Text(Self.relative(entry.ts, loc.s))
                         .font(DK.ui(10))
                         .foregroundStyle(t.textFaint)
                 }
@@ -99,11 +101,11 @@ private struct HistoryRow: View {
         .onHover { hovering = $0 }
     }
 
-    static func relative(_ ts: Date) -> String {
-        let s = Date().timeIntervalSince(ts)
-        if s < 60 { return "vừa xong" }
-        if s < 3600 { return "\(Int(s / 60)) phút trước" }
-        if s < 86400 { return "\(Int(s / 3600)) giờ trước" }
-        return "\(Int(s / 86400)) ngày trước"
+    static func relative(_ ts: Date, _ s: Strings) -> String {
+        let secs = Date().timeIntervalSince(ts)
+        if secs < 60 { return s.timeNow }
+        if secs < 3600 { return s.timeMin(Int(secs / 60)) }
+        if secs < 86400 { return s.timeHour(Int(secs / 3600)) }
+        return s.timeDay(Int(secs / 86400))
     }
 }

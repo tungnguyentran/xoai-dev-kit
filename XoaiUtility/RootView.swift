@@ -43,11 +43,11 @@ struct RootView: View {
     private var header: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text(model.active.name).font(DK.ui(15, weight: .semibold)).foregroundStyle(t.text)
-                Text(model.active.desc).font(DK.ui(11.5)).foregroundStyle(t.textFaint)
+                Text(model.active.displayName(loc.s)).font(DK.ui(15, weight: .semibold)).foregroundStyle(t.text)
+                Text(model.active.displayDesc(loc.s)).font(DK.ui(11.5)).foregroundStyle(t.textFaint)
             }
             Spacer()
-            Btn(icon: DKIcon.history, title: "Lịch sử",
+            Btn(icon: DKIcon.history, title: loc.s.historyTitle,
                 kind: model.showHistory ? .soft : .ghost, active: model.showHistory) {
                 model.showHistory.toggle()
             }
