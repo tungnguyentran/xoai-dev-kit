@@ -55,6 +55,8 @@ struct ThemeTokens {
     let accent, accentInk, accentSoft, accentLine: Color
     let danger, dangerSoft, warn: Color
     let hlKey, hlStr, hlNum, hlBool, hlNull: Color
+    /// Search match backgrounds: all hits, and the current/active hit.
+    let searchHit, searchActive: Color
     /// Opacity used for the pane drop shadow (heavier in dark mode).
     let shadowOpacity: Double
 
@@ -89,6 +91,8 @@ struct ThemeTokens {
         hlNum:      Color(oklch: 0.83,  0.13,  65),
         hlBool:     Color(oklch: 0.78,  0.14,  320),
         hlNull:     Color(oklch: 0.58,  0.007, 160),
+        searchHit:   Color(oklch: 0.83, 0.13, 80, 0.22),
+        searchActive: Color(oklch: 0.83, 0.13, 80, 0.45),
         shadowOpacity: 0.32
     )
 
@@ -115,6 +119,8 @@ struct ThemeTokens {
         hlNum:      Color(oklch: 0.55,  0.15,  50),
         hlBool:     Color(oklch: 0.52,  0.18,  320),
         hlNull:     Color(oklch: 0.62,  0.008, 160),
+        searchHit:   Color(oklch: 0.85, 0.15, 85, 0.40),
+        searchActive: Color(oklch: 0.80, 0.16, 80, 0.70),
         shadowOpacity: 0.08
     )
 }

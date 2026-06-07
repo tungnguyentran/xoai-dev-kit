@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AppKit
 
 // MARK: - Model
 
@@ -195,6 +196,10 @@ struct JsonTool: View {
     @State private var view = "text"
     @State private var indent = 2
     @FocusState private var editing: Bool
+    @State private var query = ""
+    @State private var isRegex = false
+    @State private var filterTree = false
+    @State private var currentMatch = 0
 
     private var t: ThemeTokens { theme.t }
 
@@ -202,6 +207,38 @@ struct JsonTool: View {
     private var pretty: String {
         if case let .ok(obj) = parse { return JSONEngine.render(JSONNode.build(from: obj), indent: indent) }
         return ""
+    }
+
+    private var search: JSONSearch { JSONSearch(query: query, isRegex: isRegex) }
+    private var matchRanges: [NSRange] { search.isActive ? search.ranges(in: pretty) : [] }
+
+    private var matchCountLabel: String {
+        guard search.isActive else { return "" }
+        if matchRanges.isEmpty { return "0/0" }
+        let idx = min(currentMatch, matchRanges.count - 1)
+        return "\(idx + 1)/\(matchRanges.count)"
+    }
+
+    private func stepMatch(_ delta: Int) {
+        guard !matchRanges.isEmpty else { return }
+        currentMatch = (currentMatch + delta + matchRanges.count) % matchRanges.count
+    }
+
+    /// JSON syntax colors with search-match backgrounds overlaid.
+    private func highlightedText() -> NSAttributedString {
+        let base = jsonAttributed(pretty, t)
+        guard search.isActive, !matchRanges.isEmpty else { return base }
+        let m = NSMutableAttributedString(attributedString: base)
+        for (i, r) in matchRanges.enumerated() {
+            let color = i == currentMatch ? t.searchActive : t.searchHit
+            m.addAttribute(.backgroundColor, value: NSColor(color), range: r)
+        }
+        return m
+    }
+
+    private var currentMatchRange: NSRange? {
+        guard search.isActive, matchRanges.indices.contains(currentMatch) else { return nil }
+        return matchRanges[currentMatch]
     }
 
     var body: some View {
@@ -212,6 +249,9 @@ struct JsonTool: View {
         }
         .onAppear(perform: applySeed)
         .onChange(of: model.seed?.n) { applySeed() }
+        .onChange(of: pretty) { currentMatch = 0 }
+        .onChange(of: query) { currentMatch = 0 }
+        .onChange(of: isRegex) { currentMatch = 0 }
         .logErrors(.json, message: parse.errorText)
         .onChange(of: editing) { _, focused in
             if !focused, case .ok = parse {
@@ -281,6 +321,27 @@ struct JsonTool: View {
             label: loc.s.result,
             grow: true,
             right: AnyView(HStack(spacing: 6) {
+                if case .ok = parse {
+                    SearchField(text: $query,
+                                placeholder: loc.s.searchPlaceholder,
+                                error: search.hasRegexError,
+                                errorText: loc.s.searchRegexError)
+                    Btn(title: ".*", active: isRegex, mono: true, help: "Regex") { isRegex.toggle() }
+                    if view == "text" {
+                        if search.isActive {
+                            Text(matchCountLabel)
+                                .font(DK.mono(11))
+                                .foregroundStyle(t.textFaint)
+                            Btn(icon: "chevron.up", help: "Previous match") { stepMatch(-1) }
+                            Btn(icon: "chevron.down", help: "Next match") { stepMatch(1) }
+                        }
+                    } else {
+                        Btn(icon: "line.3.horizontal.decrease.circle",
+                            title: loc.s.searchFilter,
+                            active: filterTree,
+                            help: loc.s.searchFilter) { filterTree.toggle() }
+                    }
+                }
                 Segmented(options: [(value: "text", label: loc.s.segText), (value: "tree", label: loc.s.segTree)],
                           selection: $view)
                 MonoPicker(options: [(2, "2 spaces"), (4, "4 spaces"), (0, loc.s.indentMinify)], selection: $indent)
@@ -303,16 +364,21 @@ struct JsonTool: View {
         switch parse {
         case .ok(let obj):
             if view == "text" {
-                CodeTextView(attributed: jsonAttributed(pretty, t))
+                CodeTextView(attributed: highlightedText(), scrollTo: currentMatchRange)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             } else {
-                ScrollView {
-                    JSONTreeRow(key: nil, isIndex: false, node: JSONNode.build(from: obj), depth: 0, last: true)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 12)
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                if filterTree && search.isActive && !subtreeContainsMatch(key: nil, node: JSONNode.build(from: obj), search) {
+                    EmptyHint(hint: loc.s.searchNoMatches)
+                } else {
+                    ScrollView {
+                        JSONTreeRow(key: nil, isIndex: false, node: JSONNode.build(from: obj),
+                                    depth: 0, last: true, search: search, filterTree: filterTree)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 12)
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         case .empty:
             EmptyHint(hint: loc.s.emptyResult)
@@ -332,16 +398,25 @@ struct JSONTreeRow: View {
     let node: JSONNode
     let depth: Int
     let last: Bool
+    let search: JSONSearch
+    let filterTree: Bool
 
     @State private var open: Bool
     private var t: ThemeTokens { theme.t }
 
-    init(key: String?, isIndex: Bool, node: JSONNode, depth: Int, last: Bool) {
+    init(key: String?, isIndex: Bool, node: JSONNode, depth: Int, last: Bool,
+         search: JSONSearch, filterTree: Bool) {
         self.key = key; self.isIndex = isIndex; self.node = node; self.depth = depth; self.last = last
+        self.search = search; self.filterTree = filterTree
         _open = State(initialValue: depth < 2)
     }
 
     private var indentWidth: CGFloat { CGFloat(depth) * 16 }
+
+    /// Key used for matching — array indices are not keys.
+    private var matchKey: String? { isIndex ? nil : key }
+    private var selfMatch: Bool { nodeSelfMatches(key: matchKey, node: node, search) }
+    private var filtering: Bool { filterTree && search.isActive }
 
     var body: some View {
         switch node {
@@ -359,6 +434,7 @@ struct JSONTreeRow: View {
             .textSelection(.enabled)
             .padding(.leading, indentWidth + 18)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .background(selfMatch ? t.searchHit : .clear)
     }
 
     private func keyValueText() -> Text {
@@ -381,6 +457,10 @@ struct JSONTreeRow: View {
     @ViewBuilder
     private func container(_ children: [(String, Bool, JSONNode)],
                            brackets: (String, String), unit: String) -> some View {
+        let visible = filtering
+            ? children.filter { subtreeContainsMatch(key: $0.1 ? nil : $0.0, node: $0.2, search) }
+            : children
+        let showChildren = filtering ? true : open
         VStack(alignment: .leading, spacing: 0) {
             // Header row
             HStack(spacing: 0) {
@@ -388,19 +468,21 @@ struct JSONTreeRow: View {
                     .font(.system(size: 9, weight: .semibold))
                     .foregroundStyle(t.textFaint)
                     .frame(width: 18)
-                    .rotationEffect(.degrees(open ? 90 : 0))
-                (headerText(children.count, brackets: brackets, unit: unit))
+                    .rotationEffect(.degrees(showChildren ? 90 : 0))
+                (headerText(children.count, brackets: brackets, unit: unit, showChildren: showChildren))
                     .font(DK.mono(13))
             }
             .padding(.leading, indentWidth)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .background(selfMatch ? t.searchHit : .clear)
             .contentShape(Rectangle())
-            .onTapGesture { open.toggle() }
+            .onTapGesture { if !filtering { open.toggle() } }
 
-            if open {
-                ForEach(Array(children.enumerated()), id: \.offset) { i, child in
+            if showChildren {
+                ForEach(Array(visible.enumerated()), id: \.offset) { i, child in
                     JSONTreeRow(key: child.0, isIndex: child.1, node: child.2,
-                                depth: depth + 1, last: i == children.count - 1)
+                                depth: depth + 1, last: i == visible.count - 1,
+                                search: search, filterTree: filterTree)
                 }
                 (Text(brackets.1).foregroundColor(t.textDim)
                  + (last ? Text("") : Text(",").foregroundColor(t.textFaint)))
@@ -411,14 +493,14 @@ struct JSONTreeRow: View {
         }
     }
 
-    private func headerText(_ count: Int, brackets: (String, String), unit: String) -> Text {
+    private func headerText(_ count: Int, brackets: (String, String), unit: String, showChildren: Bool) -> Text {
         var head = Text("")
         if let key {
             head = head + Text(isIndex ? key : "\"\(key)\"").foregroundColor(t.hlKey)
                         + Text(": ").foregroundColor(t.textFaint)
         }
         head = head + Text(brackets.0).foregroundColor(t.textDim)
-        if !open {
+        if !showChildren {
             head = head + Text("  \(count) \(unit) \(brackets.1)").foregroundColor(t.textFaint)
                         + (last ? Text("") : Text(",").foregroundColor(t.textFaint))
         }

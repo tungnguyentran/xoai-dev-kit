@@ -58,6 +58,7 @@ func jsonAttributed(_ text: String, _ t: ThemeTokens) -> NSAttributedString {
 
 struct CodeTextView: NSViewRepresentable {
     let attributed: NSAttributedString
+    var scrollTo: NSRange? = nil
 
     func makeNSView(context: Context) -> NSScrollView {
         let scroll = NSScrollView()
@@ -87,14 +88,26 @@ struct CodeTextView: NSViewRepresentable {
 
     func updateNSView(_ scroll: NSScrollView, context: Context) {
         guard let tv = context.coordinator.textView else { return }
-        // Avoid resetting (and losing selection/scroll) when nothing changed.
-        if tv.textStorage?.isEqual(to: attributed) == true { return }
-        tv.textStorage?.setAttributedString(attributed)
+        // Avoid resetting (and losing selection/scroll) when content is unchanged.
+        if tv.textStorage?.isEqual(to: attributed) != true {
+            tv.textStorage?.setAttributedString(attributed)
+        }
+        // Scroll/flash the current match — fire only when the target changes, and
+        // independently of the content guard above.
+        if let r = scrollTo,
+           r != context.coordinator.lastScroll,
+           r.location != NSNotFound,
+           r.location + r.length <= (tv.textStorage?.length ?? 0) {
+            context.coordinator.lastScroll = r
+            tv.scrollRangeToVisible(r)
+            tv.showFindIndicator(for: r)
+        }
     }
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
     final class Coordinator {
         weak var textView: NSTextView?
+        var lastScroll: NSRange?
     }
 }
