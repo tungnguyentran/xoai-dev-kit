@@ -62,4 +62,18 @@ struct FormCodecTests {
         let pairs = FormCodec.pairs("a=1&b=2&c=3")
         #expect(pairs.map(\.id) == [0, 1, 2])
     }
+
+    @Test func invalidPercentEncodingFallsBackToRaw() {
+        let pairs = FormCodec.pairs("key=%zz")
+        #expect(pairs.count == 1)
+        #expect(pairs[0].key == "key")
+        #expect(pairs[0].value == "%zz")
+    }
+
+    @Test func trailingAmpersandProducesNoEmptyPair() {
+        let pairs = FormCodec.pairs("a=1&")
+        #expect(pairs.count == 1)
+        #expect(pairs[0].key == "a")
+        #expect(pairs[0].value == "1")
+    }
 }
