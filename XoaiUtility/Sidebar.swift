@@ -88,11 +88,12 @@ struct Sidebar: View {
         return Button { loc.lang = l } label: {
             Text(label)
                 .font(DK.mono(12, weight: on ? .semibold : .medium))
-                .foregroundStyle(on ? t.text : t.textDim)
+                .foregroundStyle(on ? t.toggleSelText : t.textDim)
                 .frame(maxWidth: .infinity)
                 .frame(height: 28)
-                .background(on ? t.panel : .clear, in: RoundedRectangle(cornerRadius: 6))
-                .shadow(color: .black.opacity(on ? 0.18 : 0), radius: 1, y: 1)
+                .background(on ? t.toggleSelFill : .clear, in: RoundedRectangle(cornerRadius: 6))
+                .overlay(RoundedRectangle(cornerRadius: 6)
+                    .strokeBorder(on ? t.toggleSelStroke : .clear, lineWidth: 1))
         }
         .buttonStyle(.plain)
         .help(loc.s.langLabel)
@@ -115,11 +116,12 @@ struct Sidebar: View {
                 Image(systemName: icon).font(.system(size: 12))
                 Text(label).font(DK.ui(12, weight: on ? .semibold : .medium))
             }
-            .foregroundStyle(on ? t.text : t.textDim)
+            .foregroundStyle(on ? t.toggleSelText : t.textDim)
             .frame(maxWidth: .infinity)
             .frame(height: 28)
-            .background(on ? t.panel : .clear, in: RoundedRectangle(cornerRadius: 6))
-            .shadow(color: .black.opacity(on ? 0.18 : 0), radius: 1, y: 1)
+            .background(on ? t.toggleSelFill : .clear, in: RoundedRectangle(cornerRadius: 6))
+            .overlay(RoundedRectangle(cornerRadius: 6)
+                .strokeBorder(on ? t.toggleSelStroke : .clear, lineWidth: 1))
         }
         .buttonStyle(.plain)
     }
