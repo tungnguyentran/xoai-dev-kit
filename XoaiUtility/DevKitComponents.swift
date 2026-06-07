@@ -293,22 +293,14 @@ struct CodeArea: View {
         .background(.clear)
     }
 
-    @ViewBuilder
     private var editor: some View {
-        let base = TextEditor(text: $text)
-            .font(DK.mono(13))
-            .foregroundStyle(t.text)
-            .tint(t.accent)
-            .scrollContentBackground(.hidden)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .disabled(readOnly)
-            .lineSpacing(3)
-        if let focus {
-            base.focused(focus)
-        } else {
-            base
-        }
+        // NSTextView-backed: SwiftUI's TextEditor hangs the main thread when its
+        // bound string is large (pasting multi-MB JSON freezes the app).
+        EditableCodeView(text: $text,
+                         textColor: t.text,
+                         tint: t.accent,
+                         isEditable: !readOnly,
+                         onFocusChange: { focused in focus?.wrappedValue = focused })
     }
 }
 
