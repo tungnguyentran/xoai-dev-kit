@@ -72,6 +72,53 @@ enum URLCodec {
     }
 }
 
+/// One decoded key/value pair from a form-encoded body or URL query.
+struct FormPair: Identifiable {
+    let id: Int
+    let key: String
+    let value: String
+}
+
+enum FormCodec {
+    /// Split a form-encoded body (or a URL's query) into decoded key/value pairs.
+    /// Splits on `&`/`=` *first*, then percent-decodes each key and value
+    /// independently with form semantics (`+` → space). Invalid percent-encoding
+    /// in a piece falls back to the raw piece rather than dropping the row.
+    static func pairs(_ s: String) -> [FormPair] {
+        // If a full URL, parse only the query: after the first '?', before '#'.
+        var query = s
+        if let q = query.firstIndex(of: "?") {
+            query = String(query[query.index(after: q)...])
+        }
+        if let h = query.firstIndex(of: "#") {
+            query = String(query[..<h])
+        }
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { return [] }
+
+        return trimmed.split(separator: "&", omittingEmptySubsequences: true)
+            .enumerated()
+            .map { index, segment in
+                let part = String(segment)
+                let key: String, value: String
+                if let eq = part.firstIndex(of: "=") {
+                    key = String(part[..<eq])
+                    value = String(part[part.index(after: eq)...])
+                } else {
+                    key = part
+                    value = ""
+                }
+                return FormPair(id: index, key: decode(key), value: decode(value))
+            }
+    }
+
+    /// Form-decode a single key or value: `+` → space, then percent-decode.
+    private static func decode(_ s: String) -> String {
+        let spaced = s.replacingOccurrences(of: "+", with: " ")
+        return spaced.removingPercentEncoding ?? spaced
+    }
+}
+
 struct UrlTool: View {
     @EnvironmentObject var theme: ThemeManager
     @EnvironmentObject var model: AppModel
