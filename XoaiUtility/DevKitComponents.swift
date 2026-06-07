@@ -151,7 +151,9 @@ struct Segmented<Value: Hashable>: View {
 
 struct CopyBtn: View {
     @EnvironmentObject var theme: ThemeManager
-    var label: String = "Copy"
+    @EnvironmentObject var loc: LocalizationManager
+    /// nil → use the localized default "Copy"/"Đã chép".
+    var label: String? = nil
     var small: Bool = false
     var getText: () -> String
 
@@ -165,11 +167,12 @@ struct CopyBtn: View {
     }
 
     var body: some View {
+        let text = done ? loc.s.btnCopied : (label ?? loc.s.btnCopy)
         if small {
             Button(action: tap) {
                 HStack(spacing: 4) {
                     Image(systemName: done ? DKIcon.check : DKIcon.copy).font(.system(size: 11))
-                    Text(done ? "Đã chép" : label).font(DK.ui(11, weight: .medium))
+                    Text(text).font(DK.ui(11, weight: .medium))
                 }
                 .foregroundStyle(done ? t.accent : t.textDim)
                 .padding(.horizontal, 7)
@@ -179,8 +182,7 @@ struct CopyBtn: View {
             }
             .buttonStyle(.plain)
         } else {
-            Btn(icon: done ? DKIcon.check : DKIcon.copy, title: done ? "Đã chép" : label,
-                kind: .soft, action: tap)
+            Btn(icon: done ? DKIcon.check : DKIcon.copy, title: text, kind: .soft, action: tap)
         }
     }
 }
@@ -189,6 +191,7 @@ struct CopyBtn: View {
 
 struct CountBar<Extra: View>: View {
     @EnvironmentObject var theme: ThemeManager
+    @EnvironmentObject var loc: LocalizationManager
     let text: String
     @ViewBuilder var extra: () -> Extra
 
@@ -197,9 +200,9 @@ struct CountBar<Extra: View>: View {
         let chars = text.count
         let bytes = text.utf8.count
         HStack(spacing: 14) {
-            Text("\(lines) dòng")
-            Text("\(chars) ký tự")
-            Text("\(bytes) B")
+            Text("\(lines) \(loc.s.countLines)")
+            Text("\(chars) \(loc.s.countChars)")
+            Text("\(bytes) \(loc.s.countBytes)")
             extra()
         }
         .font(DK.mono(11))
