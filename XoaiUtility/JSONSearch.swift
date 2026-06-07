@@ -10,7 +10,7 @@
 
 import Foundation
 
-struct JSONSearch {
+nonisolated struct JSONSearch {
     let query: String
     let isRegex: Bool
     private let regex: NSRegularExpression?

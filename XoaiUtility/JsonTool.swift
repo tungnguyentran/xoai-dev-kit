@@ -10,7 +10,7 @@ import AppKit
 
 // MARK: - Model
 
-indirect enum JSONNode {
+nonisolated indirect enum JSONNode {
     case object([(String, JSONNode)])
     case array([JSONNode])
     case string(String)
@@ -20,7 +20,16 @@ indirect enum JSONNode {
 }
 
 extension JSONNode {
-    static func build(from value: Any) -> JSONNode {
+    /// Direct child count for containers; 0 for scalars.
+    var childCount: Int {
+        switch self {
+        case .object(let pairs): return pairs.count
+        case .array(let items):  return items.count
+        default:                 return 0
+        }
+    }
+
+    nonisolated static func build(from value: Any) -> JSONNode {
         if let dict = value as? [String: Any] {
             return .object(dict.keys.sorted().map { ($0, build(from: dict[$0] as Any)) })
         }
@@ -48,7 +57,7 @@ extension JSONNode {
 
     /// Exact literal for a parsed JSON number. Doubles use Swift's shortest
     /// round-trip form (19454.04 stays 19454.04); integers use their full digits.
-    private static func numberString(_ number: NSNumber) -> String {
+    nonisolated private static func numberString(_ number: NSNumber) -> String {
         switch String(cString: number.objCType) {
         case "f", "d": return number.doubleValue.description  // shortest round-trip form
         default:       return number.stringValue
@@ -58,7 +67,7 @@ extension JSONNode {
 
 // MARK: - Parse result
 
-enum JSONParse {
+nonisolated enum JSONParse {
     case empty
     case ok(Any)
     case error(line: Int?, col: Int?, message: String)
@@ -71,7 +80,9 @@ enum JSONParse {
     }
 }
 
-enum JSONEngine {
+// Pure, thread-safe codec — `nonisolated` so the background formatter can run it
+// off the main actor (the project defaults to MainActor isolation).
+nonisolated enum JSONEngine {
     static func parse(_ raw: String) -> JSONParse {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return .empty }
@@ -123,7 +134,7 @@ enum JSONEngine {
 
 // MARK: - Serialization
 
-private func jsonEscape(_ s: String) -> String {
+nonisolated private func jsonEscape(_ s: String) -> String {
     var out = ""
     out.reserveCapacity(s.count + 2)
     for scalar in s.unicodeScalars {
@@ -143,7 +154,7 @@ private func jsonEscape(_ s: String) -> String {
     return out
 }
 
-extension JSONNode {
+nonisolated extension JSONNode {
     func serialized(pretty: Bool, indentUnit: String, level: Int = 0) -> String {
         switch self {
         case .string(let s): return "\"\(jsonEscape(s))\""
@@ -192,6 +203,7 @@ struct JsonTool: View {
     @EnvironmentObject var model: AppModel
     @EnvironmentObject var loc: LocalizationManager
 
+    @StateObject private var fmt = JSONFormatModel()
     @State private var input = jsonSample
     @State private var view = "text"
     @State private var indent = 2
@@ -203,42 +215,33 @@ struct JsonTool: View {
 
     private var t: ThemeTokens { theme.t }
 
-    private var parse: JSONParse { JSONEngine.parse(input) }
-    private var pretty: String {
-        if case let .ok(obj) = parse { return JSONEngine.render(JSONNode.build(from: obj), indent: indent) }
-        return ""
-    }
-
+    /// Cheap, view-only matcher — used for the `isActive`/`hasRegexError` flags
+    /// (compiles the pattern, no scan). The actual match ranges come from `fmt`,
+    /// computed once per change off the main thread.
     private var search: JSONSearch { JSONSearch(query: query, isRegex: isRegex) }
-    private var matchRanges: [NSRange] { search.isActive ? search.ranges(in: pretty) : [] }
+
+    /// Push the current inputs into the background processor (debounced there).
+    private func sync() {
+        fmt.update(.init(text: input, indent: indent, dark: theme.mode == .dark,
+                         query: query, isRegex: isRegex),
+                   tokens: t)
+    }
 
     private var matchCountLabel: String {
         guard search.isActive else { return "" }
-        if matchRanges.isEmpty { return "0/0" }
-        let idx = min(currentMatch, matchRanges.count - 1)
-        return "\(idx + 1)/\(matchRanges.count)"
+        if fmt.matchRanges.isEmpty { return "0/0" }
+        let idx = min(currentMatch, fmt.matchRanges.count - 1)
+        return "\(idx + 1)/\(fmt.matchRanges.count)"
     }
 
     private func stepMatch(_ delta: Int) {
-        guard !matchRanges.isEmpty else { return }
-        currentMatch = (currentMatch + delta + matchRanges.count) % matchRanges.count
-    }
-
-    /// JSON syntax colors with search-match backgrounds overlaid.
-    private func highlightedText() -> NSAttributedString {
-        let base = jsonAttributed(pretty, t)
-        guard search.isActive, !matchRanges.isEmpty else { return base }
-        let m = NSMutableAttributedString(attributedString: base)
-        for (i, r) in matchRanges.enumerated() {
-            let color = i == currentMatch ? t.searchActive : t.searchHit
-            m.addAttribute(.backgroundColor, value: NSColor(color), range: r)
-        }
-        return m
+        guard !fmt.matchRanges.isEmpty else { return }
+        currentMatch = (currentMatch + delta + fmt.matchRanges.count) % fmt.matchRanges.count
     }
 
     private var currentMatchRange: NSRange? {
-        guard search.isActive, matchRanges.indices.contains(currentMatch) else { return nil }
-        return matchRanges[currentMatch]
+        guard search.isActive, fmt.matchRanges.indices.contains(currentMatch) else { return nil }
+        return fmt.matchRanges[currentMatch]
     }
 
     var body: some View {
@@ -247,14 +250,17 @@ struct JsonTool: View {
         } output: {
             outputPane
         }
-        .onAppear(perform: applySeed)
+        .onAppear { applySeed(); sync() }
         .onChange(of: model.seed?.n) { applySeed() }
-        .onChange(of: pretty) { currentMatch = 0 }
-        .onChange(of: query) { currentMatch = 0 }
-        .onChange(of: isRegex) { currentMatch = 0 }
-        .logErrors(.json, message: parse.errorText)
+        .onChange(of: input) { sync() }
+        .onChange(of: indent) { sync() }
+        .onChange(of: theme.mode) { sync() }
+        .onChange(of: fmt.pretty) { currentMatch = 0 }
+        .onChange(of: query) { currentMatch = 0; sync() }
+        .onChange(of: isRegex) { currentMatch = 0; sync() }
+        .logErrors(.json, message: fmt.parse.errorText)
         .onChange(of: editing) { _, focused in
-            if !focused, case .ok = parse {
+            if !focused, case .ok = fmt.parse {
                 model.pushHistory(tool: .json,
                                   label: String(input.trimmingCharacters(in: .whitespacesAndNewlines).prefix(80)),
                                   value: input)
@@ -287,7 +293,7 @@ struct JsonTool: View {
         ) {
             VStack(spacing: 0) {
                 CodeArea(text: $input, placeholder: loc.s.jsonPlaceholder, focus: $editing)
-                if case let .error(line, col, message) = parse {
+                if case let .error(line, col, message) = fmt.parse {
                     Banner(message: bannerText(line, col, message))
                 }
             }
@@ -300,14 +306,14 @@ struct JsonTool: View {
     }
 
     private var statusText: String {
-        switch parse {
+        switch fmt.parse {
         case .empty: return loc.s.statusDash
         case .ok:    return loc.s.statusValid
         case .error: return loc.s.statusSyntaxError
         }
     }
     private var statusColor: Color {
-        switch parse {
+        switch fmt.parse {
         case .empty: return t.textFaint
         case .ok:    return t.accent
         case .error: return t.danger
@@ -321,7 +327,7 @@ struct JsonTool: View {
             label: loc.s.result,
             grow: true,
             right: AnyView(HStack(spacing: 6) {
-                if case .ok = parse {
+                if case .ok = fmt.parse {
                     SearchField(text: $query,
                                 placeholder: loc.s.searchPlaceholder,
                                 error: search.hasRegexError,
@@ -346,38 +352,47 @@ struct JsonTool: View {
                           selection: $view)
                 MonoPicker(options: [(2, "2 spaces"), (4, "4 spaces"), (0, loc.s.indentMinify)], selection: $indent)
                     .frame(width: 110)
-                CopyBtn(small: true) { pretty }
+                CopyBtn(small: true) { fmt.pretty }
             }),
             footer: outputFooter
         ) {
             outputBody
+                .overlay(alignment: .topTrailing) {
+                    if fmt.processing {
+                        ProgressView()
+                            .controlSize(.small)
+                            .padding(10)
+                    }
+                }
         }
     }
 
     private var outputFooter: AnyView? {
-        if case .ok = parse { return AnyView(HStack { CountBar(text: pretty); Spacer() }) }
+        if case .ok = fmt.parse { return AnyView(HStack { CountBar(text: fmt.pretty); Spacer() }) }
         return nil
     }
 
     @ViewBuilder
     private var outputBody: some View {
-        switch parse {
-        case .ok(let obj):
-            if view == "text" {
-                CodeTextView(attributed: highlightedText(), scrollTo: currentMatchRange)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            } else {
-                if filterTree && search.isActive && !subtreeContainsMatch(key: nil, node: JSONNode.build(from: obj), search) {
-                    EmptyHint(hint: loc.s.searchNoMatches)
+        switch fmt.parse {
+        case .ok:
+            if let node = fmt.node {
+                if view == "text" {
+                    CodeTextView(attributed: fmt.highlighted, scrollTo: currentMatchRange)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 } else {
-                    ScrollView {
-                        JSONTreeRow(key: nil, isIndex: false, node: JSONNode.build(from: obj),
-                                    depth: 0, last: true, search: search, filterTree: filterTree)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 12)
-                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                    if filterTree && search.isActive && !subtreeContainsMatch(key: nil, node: node, search) {
+                        EmptyHint(hint: loc.s.searchNoMatches)
+                    } else {
+                        ScrollView {
+                            JSONTreeRow(key: nil, isIndex: false, node: node,
+                                        depth: 0, last: true, search: search, filterTree: filterTree)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 12)
+                                .frame(maxWidth: .infinity, alignment: .topLeading)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 }
             }
         case .empty:
@@ -408,7 +423,10 @@ struct JSONTreeRow: View {
          search: JSONSearch, filterTree: Bool) {
         self.key = key; self.isIndex = isIndex; self.node = node; self.depth = depth; self.last = last
         self.search = search; self.filterTree = filterTree
-        _open = State(initialValue: depth < 2)
+        // Auto-expand shallow nodes, but keep very large containers collapsed so
+        // the tree never instantiates tens of thousands of rows on first render
+        // (a 30k-element array starts closed; the user opens it deliberately).
+        _open = State(initialValue: depth < 2 && node.childCount <= 200)
     }
 
     private var indentWidth: CGFloat { CGFloat(depth) * 16 }
@@ -479,10 +497,14 @@ struct JSONTreeRow: View {
             .onTapGesture { if !filtering { open.toggle() } }
 
             if showChildren {
-                ForEach(Array(visible.enumerated()), id: \.offset) { i, child in
-                    JSONTreeRow(key: child.0, isIndex: child.1, node: child.2,
-                                depth: depth + 1, last: i == visible.count - 1,
-                                search: search, filterTree: filterTree)
+                // Lazy so an expanded large container only instantiates the rows
+                // actually scrolled into view (the enclosing ScrollView virtualizes).
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(visible.enumerated()), id: \.offset) { i, child in
+                        JSONTreeRow(key: child.0, isIndex: child.1, node: child.2,
+                                    depth: depth + 1, last: i == visible.count - 1,
+                                    search: search, filterTree: filterTree)
+                    }
                 }
                 (Text(brackets.1).foregroundColor(t.textDim)
                  + (last ? Text("") : Text(",").foregroundColor(t.textFaint)))

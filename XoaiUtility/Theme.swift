@@ -18,7 +18,7 @@ extension Color {
     ///   - c: chroma (≈0...0.4)
     ///   - h: hue in degrees
     ///   - a: alpha, 0...1
-    init(oklch l: Double, _ c: Double, _ h: Double, _ a: Double = 1) {
+    nonisolated init(oklch l: Double, _ c: Double, _ h: Double, _ a: Double = 1) {
         let hr = h * .pi / 180
         let aa = c * cos(hr)
         let bb = c * sin(hr)
@@ -48,7 +48,7 @@ extension Color {
 
 // MARK: - Tokens
 
-struct ThemeTokens {
+nonisolated struct ThemeTokens {
     let bg, bgSide, panel, panel2, field: Color
     let border, borderSoft: Color
     let text, textDim, textFaint: Color

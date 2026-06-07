@@ -13,18 +13,18 @@ import AppKit
 
 // MARK: - Attributed-string builders
 
-private func monoFont() -> NSFont {
+nonisolated private func monoFont() -> NSFont {
     NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
 }
 
-private func codeParagraph() -> NSParagraphStyle {
+nonisolated private func codeParagraph() -> NSParagraphStyle {
     let p = NSMutableParagraphStyle()
     p.lineSpacing = 3
     return p
 }
 
 /// Plain monospace text in a single color.
-func plainAttributed(_ text: String, color: Color, _ t: ThemeTokens) -> NSAttributedString {
+nonisolated func plainAttributed(_ text: String, color: Color, _ t: ThemeTokens) -> NSAttributedString {
     NSAttributedString(string: text, attributes: [
         .font: monoFont(),
         .foregroundColor: NSColor(color),
@@ -33,7 +33,7 @@ func plainAttributed(_ text: String, color: Color, _ t: ThemeTokens) -> NSAttrib
 }
 
 /// JSON pretty text with per-token syntax colors.
-func jsonAttributed(_ text: String, _ t: ThemeTokens) -> NSAttributedString {
+nonisolated func jsonAttributed(_ text: String, _ t: ThemeTokens) -> NSAttributedString {
     let result = NSMutableAttributedString(string: text, attributes: [
         .font: monoFont(),
         .foregroundColor: NSColor(t.text),
@@ -52,6 +52,97 @@ func jsonAttributed(_ text: String, _ t: ThemeTokens) -> NSAttributedString {
         result.addAttribute(.foregroundColor, value: NSColor(color), range: match.range)
     }
     return result
+}
+
+// MARK: - Editable editor
+
+/// Editable, NSTextView-backed code editor, two-way bound to `text`. SwiftUI's
+/// `TextEditor` round-trips its entire bound string through SwiftUI on every
+/// change and **hangs the main thread** once that string is large — pasting a
+/// multi-MB document freezes the app. NSTextView/TextKit edits megabytes
+/// smoothly (it lays out lazily), so all tool inputs use this instead.
+struct EditableCodeView: NSViewRepresentable {
+    @Binding var text: String
+    var textColor: Color
+    var tint: Color
+    var isEditable: Bool = true
+    /// Called on begin/end editing so callers can mirror focus (e.g. push history
+    /// on blur). Replaces the SwiftUI `.focused` wiring `TextEditor` used.
+    var onFocusChange: ((Bool) -> Void)? = nil
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scroll = NSScrollView()
+        scroll.hasVerticalScroller = true
+        scroll.hasHorizontalScroller = false
+        scroll.drawsBackground = false
+        scroll.borderType = .noBorder
+
+        let tv = NSTextView()
+        tv.delegate = context.coordinator
+        tv.isEditable = isEditable
+        tv.isSelectable = true
+        tv.isRichText = false
+        tv.allowsUndo = true
+        tv.drawsBackground = false
+        tv.textContainerInset = NSSize(width: 8, height: 12)
+        tv.textContainer?.lineFragmentPadding = 6
+        tv.isVerticallyResizable = true
+        tv.isHorizontallyResizable = false
+        tv.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        tv.autoresizingMask = [.width]
+        tv.textContainer?.widthTracksTextView = true
+        // Editing assistance is O(document) and stalls on large pastes — disable it.
+        tv.isAutomaticQuoteSubstitutionEnabled = false
+        tv.isAutomaticDashSubstitutionEnabled = false
+        tv.isAutomaticTextReplacementEnabled = false
+        tv.isAutomaticSpellingCorrectionEnabled = false
+        tv.isContinuousSpellCheckingEnabled = false
+        tv.isGrammarCheckingEnabled = false
+        tv.font = monoFont()
+        tv.textColor = NSColor(textColor)
+        tv.insertionPointColor = NSColor(tint)
+        tv.defaultParagraphStyle = codeParagraph()
+        tv.typingAttributes = [
+            .font: monoFont(),
+            .foregroundColor: NSColor(textColor),
+            .paragraphStyle: codeParagraph(),
+        ]
+        tv.string = text
+
+        scroll.documentView = tv
+        context.coordinator.textView = tv
+        return scroll
+    }
+
+    func updateNSView(_ scroll: NSScrollView, context: Context) {
+        guard let tv = context.coordinator.textView else { return }
+        context.coordinator.parent = self
+        // Only when the binding changed underneath us (paste button, sample, clear,
+        // history seed) — never echo the user's own keystrokes back in.
+        if tv.string != text {
+            let caret = min(tv.selectedRange().location, (text as NSString).length)
+            tv.string = text
+            tv.setSelectedRange(NSRange(location: caret, length: 0))
+        }
+        if tv.isEditable != isEditable { tv.isEditable = isEditable }
+        tv.insertionPointColor = NSColor(tint)
+        if tv.textColor != NSColor(textColor) { tv.textColor = NSColor(textColor) }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    final class Coordinator: NSObject, NSTextViewDelegate {
+        var parent: EditableCodeView
+        weak var textView: NSTextView?
+        init(_ parent: EditableCodeView) { self.parent = parent }
+
+        func textDidChange(_ notification: Notification) {
+            guard let tv = notification.object as? NSTextView else { return }
+            parent.text = tv.string
+        }
+        func textDidBeginEditing(_ notification: Notification) { parent.onFocusChange?(true) }
+        func textDidEndEditing(_ notification: Notification) { parent.onFocusChange?(false) }
+    }
 }
 
 // MARK: - Representable
