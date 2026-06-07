@@ -98,6 +98,19 @@ struct JSONSearchTests {
         #expect(!subtreeContainsMatch(key: nil, node: root, s))
     }
 
+    // MARK: localization
+
+    @Test func searchStringsFilledBothLangs() {
+        #expect(Strings.en.searchPlaceholder == "Search…")
+        #expect(Strings.vi.searchPlaceholder == "Tìm…")
+        #expect(!Strings.en.searchNoMatches.isEmpty)
+        #expect(!Strings.vi.searchNoMatches.isEmpty)
+        #expect(!Strings.en.searchFilter.isEmpty)
+        #expect(!Strings.vi.searchFilter.isEmpty)
+        #expect(!Strings.en.searchRegexError.isEmpty)
+        #expect(!Strings.vi.searchRegexError.isEmpty)
+    }
+
     // MARK: theme
 
     @Test func searchTokensAreDistinctAndVisible() {

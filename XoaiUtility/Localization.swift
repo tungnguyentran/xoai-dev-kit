@@ -37,6 +37,8 @@ struct Strings {
     // JSON
     let jsonInLabel, jsonPlaceholder, jsonFixToView: String
     let treeItems, treeKeys: String
+    // JSON search
+    let searchPlaceholder, searchFilter, searchNoMatches, searchRegexError: String
     // URL
     let urlInEncode, urlInDecode, urlPlaceholder, urlScopeFull: String
     let urlCantDecode, urlCantEncode, urlInvalidEncoded: String
@@ -75,6 +77,8 @@ struct Strings {
         jsonInLabel: "JSON đầu vào", jsonPlaceholder: "Dán JSON vào đây…",
         jsonFixToView: "Sửa lỗi cú pháp để xem kết quả",
         treeItems: "phần tử", treeKeys: "khóa",
+        searchPlaceholder: "Tìm…", searchFilter: "Lọc",
+        searchNoMatches: "Không có kết quả", searchRegexError: "Biểu thức không hợp lệ",
         urlInEncode: "Văn bản gốc", urlInDecode: "Chuỗi đã mã hóa",
         urlPlaceholder: "Nhập văn bản hoặc URL…", urlScopeFull: "encodeURI (toàn URL)",
         urlCantDecode: "Không thể giải mã", urlCantEncode: "Không thể mã hóa",
@@ -115,6 +119,8 @@ struct Strings {
         jsonInLabel: "JSON input", jsonPlaceholder: "Paste JSON here…",
         jsonFixToView: "Fix syntax errors to see the result",
         treeItems: "items", treeKeys: "keys",
+        searchPlaceholder: "Search…", searchFilter: "Filter",
+        searchNoMatches: "No matches", searchRegexError: "Invalid regex",
         urlInEncode: "Source text", urlInDecode: "Encoded string",
         urlPlaceholder: "Enter text or a URL…", urlScopeFull: "encodeURI (full URL)",
         urlCantDecode: "Cannot decode", urlCantEncode: "Cannot encode",
