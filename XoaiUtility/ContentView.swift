@@ -10,11 +10,13 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var theme = ThemeManager()
     @StateObject private var model = AppModel()
+    @StateObject private var loc = LocalizationManager()
 
     var body: some View {
         RootView()
             .environmentObject(theme)
             .environmentObject(model)
+            .environmentObject(loc)
     }
 }
 

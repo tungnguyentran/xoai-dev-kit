@@ -117,4 +117,52 @@ struct XoaiUtilityTests {
         #expect(JSONParse.error(line: nil, col: nil, message: "bad utf8").errorText == "bad utf8")
         #expect(JSONParse.empty.errorText == nil)
     }
+
+    // MARK: - Localization
+
+    @Test func errLineColInterpolates() {
+        #expect(Strings.en.errLineCol(3, 5, "x") == "Line 3, col 5 — x")
+        #expect(Strings.vi.errLineCol(3, 5, "x") == "Dòng 3, cột 5 — x")
+    }
+
+    @Test func parameterizedTimeAndJwt() {
+        #expect(Strings.en.timeMin(5) == "5 min ago")
+        #expect(Strings.vi.timeHour(2) == "2 giờ trước")
+        #expect(Strings.en.jwtParts3(2) == "Token must have 3 dot-separated parts (got: 2)")
+    }
+
+    @MainActor @Test func localizationRoundTrips() {
+        let loc = LocalizationManager()
+        let original = loc.lang
+        defer { loc.lang = original }
+        loc.lang = .vi
+        #expect(loc.s.btnPaste == "Dán")
+        #expect(loc.locale.identifier == "vi")
+        loc.lang = .en
+        #expect(loc.s.btnPaste == "Paste")
+        #expect(loc.locale.identifier == "en")
+    }
+
+    // Regression: the selected language/theme toggle pill used `panel` over the
+    // toggle row's `field`. In light mode those are both ~white (RGB distance
+    // ~0.025), so the selection was invisible and the toggle looked dead. The
+    // selected fill must stay clearly distinct from `field` in BOTH themes.
+    @Test func toggleSelectionVisibleInBothThemes() {
+        func srgb(_ c: Color) -> (r: Double, g: Double, b: Double, a: Double) {
+            let n = NSColor(c).usingColorSpace(.sRGB)!
+            return (n.redComponent, n.greenComponent, n.blueComponent, n.alphaComponent)
+        }
+        // Composite the (possibly translucent) selected fill over `field`, then
+        // measure its RGB distance from `field`.
+        func selectedDistance(_ tk: ThemeTokens) -> Double {
+            let f = srgb(tk.toggleSelFill)
+            let b = srgb(tk.field)
+            let r = f.a * f.r + (1 - f.a) * b.r
+            let g = f.a * f.g + (1 - f.a) * b.g
+            let bl = f.a * f.b + (1 - f.a) * b.b
+            return ((r - b.r) * (r - b.r) + (g - b.g) * (g - b.g) + (bl - b.b) * (bl - b.b)).squareRoot()
+        }
+        #expect(selectedDistance(.light) > 0.08)
+        #expect(selectedDistance(.dark) > 0.08)
+    }
 }

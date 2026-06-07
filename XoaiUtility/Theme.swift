@@ -58,6 +58,14 @@ struct ThemeTokens {
     /// Opacity used for the pane drop shadow (heavier in dark mode).
     let shadowOpacity: Double
 
+    // Selected-state colors for the sidebar segmented pills (language / theme
+    // toggles). A plain `panel`-on-`field` pill is invisible in light mode
+    // (`panel` and `field` are both ~white), so selection uses the accent
+    // "active" idiom — the same treatment `ToolRow` uses for the active tool.
+    var toggleSelFill: Color { accentSoft }
+    var toggleSelStroke: Color { accentLine }
+    var toggleSelText: Color { accent }
+
     static let dark = ThemeTokens(
         bg:         Color(oklch: 0.175, 0.004, 160),
         bgSide:     Color(oklch: 0.205, 0.004, 160),

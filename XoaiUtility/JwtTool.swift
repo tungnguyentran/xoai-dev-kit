@@ -35,19 +35,19 @@ enum JWTCodec {
         return String(data: data, encoding: .utf8)
     }
 
-    static func decode(_ raw: String) -> JWTResult {
+    static func decode(_ raw: String, _ s: Strings) -> JWTResult {
         let t = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         if t.isEmpty { return .empty }
         let parts = t.components(separatedBy: ".")
         if parts.count != 3 {
-            return .error("Token phải có 3 phần ngăn bởi dấu chấm (hiện tại: \(parts.count))")
+            return .error(s.jwtParts3(parts.count))
         }
         guard let h = base64urlToString(parts[0]), let p = base64urlToString(parts[1]),
               let hData = h.data(using: .utf8), let pData = p.data(using: .utf8),
               let headerObj = try? JSONSerialization.jsonObject(with: hData),
               let payloadObj = try? JSONSerialization.jsonObject(with: pData),
               let payloadDict = payloadObj as? [String: Any] else {
-            return .error("Không giải mã được header/payload (Base64URL hoặc JSON sai)")
+            return .error(s.jwtDecodeFail)
         }
         return .ok(JWTDecoded(
             headerPretty: pretty(headerObj),
@@ -66,13 +66,16 @@ enum JWTCodec {
     }
 }
 
-private func jwtTime(_ value: Any?) -> String? {
+private func jwtTime(_ value: Any?, locale: Locale) -> String? {
     guard let n = value as? NSNumber else { return nil }
     let date = Date(timeIntervalSince1970: n.doubleValue)
-    let df = DateFormatter()
-    df.locale = Locale(identifier: "vi_VN")
-    df.dateFormat = "HH:mm:ss · d/M/yyyy"
-    return df.string(from: date)
+    let time = DateFormatter()
+    time.locale = locale
+    time.dateFormat = "HH:mm:ss"
+    let day = DateFormatter()
+    day.locale = locale
+    day.dateStyle = .short
+    return "\(time.string(from: date)) · \(day.string(from: date))"
 }
 
 // MARK: - Tool
@@ -82,13 +85,14 @@ private let jwtSample = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyXz
 struct JwtTool: View {
     @EnvironmentObject var theme: ThemeManager
     @EnvironmentObject var model: AppModel
+    @EnvironmentObject var loc: LocalizationManager
 
     @State private var input = jwtSample
     @State private var editing = false
 
     private var t: ThemeTokens { theme.t }
 
-    private var decoded: JWTResult { JWTCodec.decode(input) }
+    private var decoded: JWTResult { JWTCodec.decode(input, loc.s) }
 
     private var expInfo: (exp: Bool, expired: Bool) {
         guard case let .ok(d) = decoded, let exp = d.payload["exp"] as? NSNumber else { return (false, false) }
@@ -117,9 +121,9 @@ struct JwtTool: View {
             label: "JWT Token",
             grow: true,
             right: AnyView(HStack(spacing: 4) {
-                Btn(icon: DKIcon.paste, title: "Dán") { input = Clip.paste(); editing = false }
-                Btn(title: "Ví dụ", mono: true) { input = jwtSample; editing = false }
-                Btn(icon: DKIcon.clear, title: "Xóa") { input = ""; editing = true }
+                Btn(icon: DKIcon.paste, title: loc.s.btnPaste) { input = Clip.paste(); editing = false }
+                Btn(title: loc.s.btnSample, mono: true) { input = jwtSample; editing = false }
+                Btn(icon: DKIcon.clear, title: loc.s.btnClear) { input = ""; editing = true }
             }),
             footer: AnyView(HStack {
                 CountBar(text: input)
@@ -139,7 +143,7 @@ struct JwtTool: View {
         let color = info.expired ? t.danger : info.exp ? t.accent : t.textFaint
         return HStack(spacing: 5) {
             Circle().fill(color).frame(width: 6, height: 6)
-            Text(info.expired ? "Đã hết hạn" : info.exp ? "Còn hiệu lực" : "Không có exp")
+            Text(info.expired ? loc.s.jwtExpired : info.exp ? loc.s.jwtValid : loc.s.jwtNoExp)
                 .font(DK.mono(11))
         }
         .foregroundStyle(color)
@@ -164,7 +168,7 @@ struct JwtTool: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 Button { editing = true } label: {
-                    Text("Sửa token")
+                    Text(loc.s.jwtEditToken)
                         .font(DK.ui(11))
                         .foregroundStyle(t.textDim)
                         .padding(.horizontal, 9)
@@ -176,7 +180,7 @@ struct JwtTool: View {
                 .padding(8)
             }
         } else {
-            CodeArea(text: $input, placeholder: "Dán JWT token…")
+            CodeArea(text: $input, placeholder: loc.s.jwtPlaceholder)
         }
     }
 
@@ -197,12 +201,12 @@ struct JwtTool: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .empty:
-            Pane(label: "Kết quả giải mã", grow: true) {
-                EmptyHint(hint: "Dán JWT để xem header & payload")
+            Pane(label: loc.s.jwtResultLabel, grow: true) {
+                EmptyHint(hint: loc.s.jwtEmptyHint)
             }
         case .error:
-            Pane(label: "Kết quả giải mã", grow: true) {
-                EmptyHint(hint: "Token không hợp lệ")
+            Pane(label: loc.s.jwtResultLabel, grow: true) {
+                EmptyHint(hint: loc.s.jwtInvalidHint)
             }
         }
     }
@@ -217,8 +221,8 @@ struct JwtTool: View {
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 HStack(spacing: 8) {
-                    CopyBtn(label: "Chép signature", small: true) { sig }
-                    Text("Chữ ký không được xác thực ở phía client")
+                    CopyBtn(label: loc.s.jwtCopySig, small: true) { sig }
+                    Text(loc.s.jwtSigNote)
                         .font(DK.ui(11)).foregroundStyle(t.textFaint)
                 }
             }
@@ -259,13 +263,14 @@ private struct JwtSection: View {
 
 private struct ClaimRows: View {
     @EnvironmentObject var theme: ThemeManager
+    @EnvironmentObject var loc: LocalizationManager
     let payload: [String: Any]
     let expired: Bool
 
     private var t: ThemeTokens { theme.t }
 
     private var rows: [(label: String, key: String, value: NSNumber)] {
-        [("Phát hành (iat)", "iat"), ("Hiệu lực từ (nbf)", "nbf"), ("Hết hạn (exp)", "exp")]
+        [(loc.s.claimIat, "iat"), (loc.s.claimNbf, "nbf"), (loc.s.claimExp, "exp")]
             .compactMap { item in
                 (payload[item.1] as? NSNumber).map { (item.0, item.1, $0) }
             }
@@ -281,9 +286,9 @@ private struct ClaimRows: View {
                         Text(row.label).foregroundStyle(t.textDim).frame(width: 130, alignment: .leading)
                         Text(row.value.stringValue).font(DK.mono(12))
                             .foregroundStyle(t.textFaint).frame(width: 96, alignment: .leading)
-                        if let time = jwtTime(row.value) {
+                        if let time = jwtTime(row.value, locale: loc.locale) {
                             let isExp = row.key == "exp"
-                            Text(time + (isExp && expired ? "  · đã hết hạn" : ""))
+                            Text(time + (isExp && expired ? loc.s.claimExpiredSuffix : ""))
                                 .foregroundStyle(isExp && expired ? t.danger : t.text)
                         }
                         Spacer(minLength: 0)

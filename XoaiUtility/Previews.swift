@@ -35,12 +35,14 @@ private let bigJSON: String = {
             let m = AppModel(); m.active = .json; m.showHistory = false
             m.seed = Seed(value: bigJSON, n: 1); return m
         }())
+        .environmentObject(LocalizationManager())
 }
 
 #Preview("Shell — Light") {
     RootView()
         .environmentObject(previewTheme(.light))
         .environmentObject({ let m = AppModel(); m.active = .json; return m }())
+        .environmentObject(LocalizationManager())
         .frame(width: 1040, height: 680)
 }
 
@@ -51,6 +53,7 @@ private let bigJSON: String = {
         .background(ThemeTokens.dark.bg)
         .environmentObject(previewTheme(.dark))
         .environmentObject(previewModel(.jwt))
+        .environmentObject(LocalizationManager())
 }
 
 #Preview("URL — Dark") {
@@ -60,6 +63,7 @@ private let bigJSON: String = {
         .background(ThemeTokens.dark.bg)
         .environmentObject(previewTheme(.dark))
         .environmentObject(previewModel(.url))
+        .environmentObject(LocalizationManager())
 }
 
 #Preview("Base64 — Dark") {
@@ -69,4 +73,5 @@ private let bigJSON: String = {
         .background(ThemeTokens.dark.bg)
         .environmentObject(previewTheme(.dark))
         .environmentObject(previewModel(.base64))
+        .environmentObject(LocalizationManager())
 }

@@ -22,12 +22,22 @@ enum ToolID: String, CaseIterable, Identifiable, Codable {
         }
     }
 
-    var desc: String {
+    /// Localized display name (identical to `name` today, but routed through the table).
+    func displayName(_ s: Strings) -> String {
         switch self {
-        case .json:   return "Format, làm đẹp & xem cây"
-        case .url:    return "Mã hóa & giải mã URL"
-        case .base64: return "Encode & decode UTF-8"
-        case .jwt:    return "Đọc header, payload, claims"
+        case .json:   return s.toolJsonName
+        case .url:    return s.toolUrlName
+        case .base64: return s.toolBase64Name
+        case .jwt:    return s.toolJwtName
+        }
+    }
+
+    func displayDesc(_ s: Strings) -> String {
+        switch self {
+        case .json:   return s.toolJsonDesc
+        case .url:    return s.toolUrlDesc
+        case .base64: return s.toolBase64Desc
+        case .jwt:    return s.toolJwtDesc
         }
     }
 
@@ -41,8 +51,10 @@ enum ToolID: String, CaseIterable, Identifiable, Codable {
         }
     }
 
-    /// First word of the name, used as the history badge label.
-    var shortName: String { String(name.split(separator: " ").first ?? "") }
+    /// First word of the localized name, used as the history badge label.
+    func displayShortName(_ s: Strings) -> String {
+        String(displayName(s).split(separator: " ").first ?? "")
+    }
 }
 
 struct HistoryEntry: Identifiable, Codable, Equatable {

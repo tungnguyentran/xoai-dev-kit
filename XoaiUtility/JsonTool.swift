@@ -62,7 +62,8 @@ enum JSONParse {
     case ok(Any)
     case error(line: Int?, col: Int?, message: String)
 
-    /// Error message for logging — matches the Banner text; nil when not an error.
+    /// Error message for diagnostic logging (not localized); nil when not an error.
+    /// The user-facing Banner is localized separately via `JsonTool.bannerText`.
     var errorText: String? {
         guard case let .error(line, col, message) = self else { return nil }
         return (line != nil ? "Dòng \(line!), cột \(col ?? 0) — " : "") + message
@@ -188,6 +189,7 @@ private let jsonSample = """
 struct JsonTool: View {
     @EnvironmentObject var theme: ThemeManager
     @EnvironmentObject var model: AppModel
+    @EnvironmentObject var loc: LocalizationManager
 
     @State private var input = jsonSample
     @State private var view = "text"
@@ -228,12 +230,12 @@ struct JsonTool: View {
 
     private var inputPane: some View {
         Pane(
-            label: "JSON đầu vào",
+            label: loc.s.jsonInLabel,
             grow: true,
             right: AnyView(HStack(spacing: 4) {
-                Btn(icon: DKIcon.paste, title: "Dán") { input = Clip.paste() }
-                Btn(title: "Ví dụ", mono: true) { input = jsonSample }
-                Btn(icon: DKIcon.clear, title: "Xóa") { input = "" }
+                Btn(icon: DKIcon.paste, title: loc.s.btnPaste) { input = Clip.paste() }
+                Btn(title: loc.s.btnSample, mono: true) { input = jsonSample }
+                Btn(icon: DKIcon.clear, title: loc.s.btnClear) { input = "" }
             }),
             footer: AnyView(HStack {
                 CountBar(text: input)
@@ -244,19 +246,24 @@ struct JsonTool: View {
             })
         ) {
             VStack(spacing: 0) {
-                CodeArea(text: $input, placeholder: "Dán JSON vào đây…", focus: $editing)
+                CodeArea(text: $input, placeholder: loc.s.jsonPlaceholder, focus: $editing)
                 if case let .error(line, col, message) = parse {
-                    Banner(message: (line != nil ? "Dòng \(line!), cột \(col ?? 0) — " : "") + message)
+                    Banner(message: bannerText(line, col, message))
                 }
             }
         }
     }
 
+    /// Localized "Line N, col M — msg" wrapper; bare message when no position.
+    private func bannerText(_ line: Int?, _ col: Int?, _ message: String) -> String {
+        line != nil ? loc.s.errLineCol(line!, col ?? 0, message) : message
+    }
+
     private var statusText: String {
         switch parse {
-        case .empty: return "—"
-        case .ok:    return "● hợp lệ"
-        case .error: return "● lỗi cú pháp"
+        case .empty: return loc.s.statusDash
+        case .ok:    return loc.s.statusValid
+        case .error: return loc.s.statusSyntaxError
         }
     }
     private var statusColor: Color {
@@ -271,12 +278,12 @@ struct JsonTool: View {
 
     private var outputPane: some View {
         Pane(
-            label: "Kết quả",
+            label: loc.s.result,
             grow: true,
             right: AnyView(HStack(spacing: 6) {
-                Segmented(options: [(value: "text", label: "Văn bản"), (value: "tree", label: "Cây")],
+                Segmented(options: [(value: "text", label: loc.s.segText), (value: "tree", label: loc.s.segTree)],
                           selection: $view)
-                MonoPicker(options: [(2, "2 spaces"), (4, "4 spaces"), (0, "Minify")], selection: $indent)
+                MonoPicker(options: [(2, "2 spaces"), (4, "4 spaces"), (0, loc.s.indentMinify)], selection: $indent)
                     .frame(width: 110)
                 CopyBtn(small: true) { pretty }
             }),
@@ -308,9 +315,9 @@ struct JsonTool: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         case .empty:
-            EmptyHint(hint: "Kết quả sẽ hiện ở đây")
+            EmptyHint(hint: loc.s.emptyResult)
         case .error:
-            EmptyHint(hint: "Sửa lỗi cú pháp để xem kết quả")
+            EmptyHint(hint: loc.s.jsonFixToView)
         }
     }
 }
@@ -319,6 +326,7 @@ struct JsonTool: View {
 
 struct JSONTreeRow: View {
     @EnvironmentObject var theme: ThemeManager
+    @EnvironmentObject var loc: LocalizationManager
     let key: String?
     let isIndex: Bool
     let node: JSONNode
@@ -337,9 +345,9 @@ struct JSONTreeRow: View {
 
     var body: some View {
         switch node {
-        case .object(let pairs): container(pairs.map { ($0.0, false, $0.1) }, brackets: ("{", "}"), unit: "khóa")
+        case .object(let pairs): container(pairs.map { ($0.0, false, $0.1) }, brackets: ("{", "}"), unit: loc.s.treeKeys)
         case .array(let items):  container(items.enumerated().map { (String($0.offset), true, $0.element) },
-                                           brackets: ("[", "]"), unit: "phần tử")
+                                           brackets: ("[", "]"), unit: loc.s.treeItems)
         default: leaf
         }
     }
