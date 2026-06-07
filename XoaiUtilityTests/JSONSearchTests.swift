@@ -56,4 +56,43 @@ struct JSONSearchTests {
         #expect(r[1] == NSRange(location: 4, length: 2))
         #expect(r[2] == NSRange(location: 7, length: 2))
     }
+
+    // MARK: tree helpers
+
+    private func node(_ json: String) -> JSONNode {
+        let obj = try! JSONSerialization.jsonObject(with: Data(json.utf8), options: [.fragmentsAllowed])
+        return JSONNode.build(from: obj)
+    }
+
+    @Test func selfMatchOnKey() {
+        let s = JSONSearch(query: "ver", isRegex: false)
+        #expect(nodeSelfMatches(key: "version", node: .string("1.0.0"), s))
+    }
+
+    @Test func selfMatchOnScalarValue() {
+        let s = JSONSearch(query: "1.0", isRegex: false)
+        #expect(nodeSelfMatches(key: "version", node: .string("1.0.0"), s))
+        #expect(nodeSelfMatches(key: nil, node: .number("1.05"), s))
+        #expect(nodeSelfMatches(key: nil, node: .bool(true), JSONSearch(query: "tru", isRegex: false)))
+        #expect(nodeSelfMatches(key: nil, node: .null, JSONSearch(query: "null", isRegex: false)))
+    }
+
+    @Test func containerMatchesOnlyViaKey() {
+        let s = JSONSearch(query: "meta", isRegex: false)
+        let obj = node(#"{"x": 1}"#)
+        #expect(nodeSelfMatches(key: "meta", node: obj, s))
+        #expect(!nodeSelfMatches(key: nil, node: obj, s))   // no key, container has no scalar text
+    }
+
+    @Test func subtreeFindsDeepMatch() {
+        let s = JSONSearch(query: "1280", isRegex: false)
+        let root = node(#"{"meta": {"stars": 1280, "license": null}}"#)
+        #expect(subtreeContainsMatch(key: nil, node: root, s))
+    }
+
+    @Test func subtreeNoMatch() {
+        let s = JSONSearch(query: "zzz", isRegex: false)
+        let root = node(#"{"a": [1, 2, {"b": "c"}]}"#)
+        #expect(!subtreeContainsMatch(key: nil, node: root, s))
+    }
 }
