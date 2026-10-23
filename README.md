@@ -93,7 +93,7 @@ Screenshots go in `site/assets/`. See [`site/assets/README.md`](site/assets/READ
 
 **Deploying (Cloudflare Pages):** Workers & Pages → Create → Pages → Connect to Git → this repo. Production branch `main`, framework preset *None*, build command *(empty)*, build output directory `site`. Pushes to `main` deploy automatically, and pull requests get preview URLs. Without Git integration: `npx wrangler pages deploy site --project-name devkit`.
 
-The Download button points to `releases/latest`, so it only works once the repo is public and a GitHub Release with a `.dmg`/`.zip` is published.
+The Download buttons link to `releases/latest/download/XoaiUtility-macOS.zip`. That file is built and attached by `.github/workflows/release.yml` whenever a `v*` tag is pushed (`git tag v1.0.0 && git push origin v1.0.0`). Builds are ad-hoc signed and not notarized, so on first launch users right-click → Open.
 
 ## License
 

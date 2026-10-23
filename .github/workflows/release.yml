@@ -1,0 +1,49 @@
+# Builds the macOS app and publishes it as a GitHub Release when a v* tag is pushed.
+# The asset name is fixed so the landing page can link to
+# releases/latest/download/XoaiUtility-macOS.zip.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-26
+    env:
+      # Ad-hoc signing: no Developer ID / notarization (users right-click → Open on first launch).
+      SIGN_FLAGS: CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER=
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Xcode
+        run: xcodebuild -version
+
+      - name: Unit tests
+        run: |
+          xcodebuild test -project XoaiUtility.xcodeproj -scheme XoaiUtility \
+            -destination 'platform=macOS' -only-testing:XoaiUtilityTests $SIGN_FLAGS
+
+      - name: Build
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          xcodebuild build -project XoaiUtility.xcodeproj -scheme XoaiUtility \
+            -configuration Release -destination 'generic/platform=macOS' \
+            -derivedDataPath build MARKETING_VERSION="$VERSION" $SIGN_FLAGS
+
+      - name: Package
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent \
+            build/Build/Products/Release/XoaiUtility.app XoaiUtility-macOS.zip
+          shasum -a 256 XoaiUtility-macOS.zip
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" XoaiUtility-macOS.zip \
+            --title "DevKit $GITHUB_REF_NAME" --generate-notes \
+            --notes "Unsigned build: on first launch, right-click XoaiUtility.app → Open (or run \`xattr -dr com.apple.quarantine XoaiUtility.app\`). Requires macOS 26.5+."

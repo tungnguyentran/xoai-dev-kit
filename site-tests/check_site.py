@@ -11,7 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-DL = "https://github.com/tungnguyentran/xoai-dev-kit/releases/latest"
+DL = "https://github.com/tungnguyentran/xoai-dev-kit/releases/latest/download/XoaiUtility-macOS.zip"
 GH = "https://github.com/tungnguyentran/xoai-dev-kit"
 
 
