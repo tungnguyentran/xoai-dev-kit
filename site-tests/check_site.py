@@ -218,5 +218,43 @@ class ThemeTests(unittest.TestCase):
             self.assertEqual(css_block(css, pre + " .shot img.shot-light").get("display"), "none", pre)
 
 
+EXPECTED = ["hero-dark.png", "hero-light.png", "tool-json.png", "tool-url.png",
+            "tool-base64.png", "tool-jwt.png"]
+
+
+class AssetTests(unittest.TestCase):
+    def test_every_img_has_placeholder(self):
+        p = parse_html(load("site/index.html"))
+        for img in p.find_all("img"):
+            self.assertIn("onerror", img.attrs, img.attrs["src"])
+            self.assertIn("is-missing", img.attrs["onerror"])
+            self.assertTrue(img.attrs.get("width") and img.attrs.get("height"), img.attrs["src"])
+        self.assertEqual({i.attrs["src"].removeprefix("assets/") for i in p.find_all("img")}, set(EXPECTED))
+
+    def test_placeholder_css(self):
+        css = load("site/styles.css")
+        self.assertEqual(css_block(css, ".shot.is-missing img").get("display"), "none")
+        self.assertEqual(css_block(css, ".shot.is-missing .shot-ph").get("display"), "grid")
+        # hero: placeholder appears when the variant for the active theme failed
+        self.assertEqual(css_block(css, ".shot.is-missing-light .shot-ph").get("display"), "grid")
+        for pre in [':root[data-theme="dark"]', ':root:not([data-theme="light"])']:
+            self.assertEqual(css_block(css, pre + " .shot.is-missing-dark .shot-ph").get("display"), "grid", pre)
+            self.assertEqual(css_block(css, pre + " .shot.is-missing-light:not(.is-missing-dark) .shot-ph").get("display"), "none", pre)
+
+    def test_asset_readme_lists_files(self):
+        readme = load("site/assets/README.md")
+        for f in EXPECTED:
+            self.assertIn(f, readme)
+        self.assertIn("2880×1800", readme)
+        self.assertIn("1600×1000", readme)
+
+    def test_headers(self):
+        h = load("site/_headers")
+        self.assertRegex(h, r"/assets/\*\s+Cache-Control: public, max-age=604800")
+        for line in ["X-Content-Type-Options: nosniff",
+                     "Referrer-Policy: strict-origin-when-cross-origin", "X-Frame-Options: DENY"]:
+            self.assertIn(line, h)
+
+
 if __name__ == "__main__":
     unittest.main()

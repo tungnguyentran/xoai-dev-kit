@@ -213,6 +213,19 @@ h1, h2, h3 { line-height: 1.15; margin: 0; letter-spacing: -0.02em; }
   :root:not([data-theme="light"]) .shot img.shot-light { display: none; }
 }
 
+/* Missing screenshots: an img's onerror tags its .shot, which swaps in the
+   labelled placeholder. Hero variants report separately, so the placeholder
+   shows only when the variant for the active theme is the one that failed. */
+.shot.is-missing img { display: none; }
+.shot.is-missing .shot-ph { display: grid; }
+.shot.is-missing-light .shot-ph { display: grid; }
+:root[data-theme="dark"] .shot.is-missing-dark .shot-ph { display: grid; }
+:root[data-theme="dark"] .shot.is-missing-light:not(.is-missing-dark) .shot-ph { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .shot.is-missing-dark .shot-ph { display: grid; }
+  :root:not([data-theme="light"]) .shot.is-missing-light:not(.is-missing-dark) .shot-ph { display: none; }
+}
+
 /* ---- Tools ---- */
 .tools { padding-top: 72px; padding-bottom: 40px; scroll-margin-top: 60px; }
 .tools h2, .footer-cta h2 { font-size: clamp(28px, 4vw, 40px); text-align: center; }
