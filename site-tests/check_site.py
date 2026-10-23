@@ -138,15 +138,81 @@ def swift_tokens(which: str) -> dict:
     return out
 
 
-def css_block(css: str, selector: str) -> dict:
-    """Return {--prop / prop: value} declared directly in the first block whose
-    selector list is exactly `selector`."""
+DARK_MQ = "(prefers-color-scheme: dark)"
+DARK_PICKED = ':root[data-theme="dark"]'
+DARK_OS = ':root:not([data-theme="light"])'
+# The two ways dark mode applies: picked with the toggle, or from the OS (inside DARK_MQ).
+DARK_CONTEXTS = [(DARK_PICKED, None), (DARK_OS, DARK_MQ)]
+
+
+def css_rules(css: str) -> list:
+    """Parse CSS into [(media, selector, {prop: value})]. `media` is the
+    enclosing `@media` condition (e.g. "(prefers-color-scheme: dark)") or None."""
     css = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
-    for m in re.finditer(r"([^{}]+)\{([^{}]*)\}", css):
-        if m.group(1).strip() == selector:
-            return {k.strip(): v.strip() for k, v in
-                    (d.split(":", 1) for d in m.group(2).split(";") if ":" in d)}
-    raise AssertionError(f"no CSS block for {selector!r}")
+    rules, stack, start = [], [], 0
+    for i, ch in enumerate(css):
+        if ch == "{":
+            stack.append(css[start:i].strip())
+            start = i + 1
+        elif ch == "}":
+            prelude = stack.pop()
+            if not prelude.startswith("@"):
+                media = next((p[len("@media"):].strip() for p in reversed(stack)
+                              if p.startswith("@media")), None)
+                decls = {k.strip(): v.strip() for k, v in
+                         (d.split(":", 1) for d in css[start:i].split(";") if ":" in d)}
+                rules.append((media, prelude, decls))
+            start = i + 1
+    return rules
+
+
+def css_block(css: str, selector: str, media: str = None) -> dict:
+    """Declarations of the single rule for `selector` inside `@media media`
+    (None = top level). Fails if it's missing or declared more than once."""
+    found = [d for m, s, d in css_rules(css) if s == selector and m == media]
+    if len(found) != 1:
+        raise AssertionError(f"expected 1 CSS block for {selector!r} in @media {media!r}, found {len(found)}")
+    return found[0]
+
+
+def theme_tokens(css: str, theme: str) -> dict:
+    """Custom properties in effect for `theme` ("light" | "dark", as picked with the toggle)."""
+    t = {k: v for k, v in css_block(css, ":root").items() if k.startswith("--")}
+    if theme == "dark":
+        t.update({k: v for k, v in css_block(css, DARK_PICKED).items() if k.startswith("--")})
+    return t
+
+
+def _oklch_to_srgb(l, c, h):
+    import math
+    a, b = c * math.cos(math.radians(h)), c * math.sin(math.radians(h))
+    l_, m_, s_ = (l + 0.3963377774 * a + 0.2158037573 * b) ** 3, \
+                 (l - 0.1055613458 * a - 0.0638541728 * b) ** 3, \
+                 (l - 0.0894841775 * a - 1.2914855480 * b) ** 3
+    lin = (4.0767416621 * l_ - 3.3077115913 * m_ + 0.2309699292 * s_,
+           -1.2684380046 * l_ + 2.6097574011 * m_ - 0.3413193965 * s_,
+           -0.0041960863 * l_ - 0.7034186147 * m_ + 1.7076147010 * s_)
+    return tuple(min(1.0, max(0.0, x)) for x in lin)  # linear sRGB, gamut-clipped
+
+
+def resolve(value: str, tokens: dict, over=None):
+    """Resolve `var(--x)` / `oklch(L C H [/ A])` to linear sRGB, compositing any
+    alpha over `over` (defaults to the theme's --bg)."""
+    while (m := re.fullmatch(r"var\((--[\w-]+)\)", value.strip())):
+        value = tokens[m.group(1)]
+    n = [float(x) for x in re.findall(r"[\d.]+", value)]
+    rgb = _oklch_to_srgb(*n[:3])
+    alpha = n[3] if len(n) > 3 else 1.0
+    if alpha < 1:
+        base = over or resolve(tokens["--bg"], tokens)
+        rgb = tuple(alpha * x + (1 - alpha) * y for x, y in zip(rgb, base))
+    return rgb
+
+
+def contrast(fg, bg) -> float:
+    lum = lambda c: 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+    hi, lo = sorted((lum(fg), lum(bg)), reverse=True)
+    return (hi + 0.05) / (lo + 0.05)
 
 
 def kebab(name: str) -> str:
@@ -169,9 +235,9 @@ class StyleTests(unittest.TestCase):
     def test_tokens_match_theme_swift(self):
         light, dark = swift_tokens("light"), swift_tokens("dark")
         self.assertEqual(len(light), len(dark))
-        for blk, src in [(":root", light), (':root[data-theme="dark"]', dark),
-                         (':root:not([data-theme="light"])', dark)]:
-            got = css_block(self.css, blk)
+        for blk, media, src in [(":root", None, light), (DARK_PICKED, None, dark),
+                                (DARK_OS, DARK_MQ, dark)]:
+            got = css_block(self.css, blk, media)
             for t in TOKENS:
                 self.assertEqual(norm(got[kebab(t)]), norm(src[t]), f"{blk} {t}")
 
@@ -182,6 +248,30 @@ class StyleTests(unittest.TestCase):
         # --text-faint fails WCAG AA (≈3:1) for small text in dark mode; Lighthouse flagged these.
         for sel in [".meta", ".footer-links"]:
             self.assertEqual(css_block(self.css, sel).get("color"), "var(--text-dim)", sel)
+
+    def test_selectors_declared_once(self):
+        # a later duplicate would silently override the block the other tests inspect
+        seen = [(media, sel) for media, sel, _ in css_rules(self.css)]
+        dupes = {x for x in seen if seen.count(x) > 1}
+        self.assertFalse(dupes, dupes)
+
+    def test_hidden_toggle_stays_hidden(self):
+        # `.icon-btn { display: inline-grid }` would otherwise override the `hidden` attribute
+        self.assertEqual(css_block(self.css, ".icon-btn[hidden]").get("display"), "none")
+
+    def test_primary_button_contrast(self):
+        for theme in ("light", "dark"):
+            t = theme_tokens(self.css, theme)
+            blk = css_block(self.css, ".btn-primary")
+            ratio = contrast(resolve(blk["color"], t), resolve(blk["background"], t))
+            self.assertGreaterEqual(ratio, 4.5, f"{theme}: {ratio:.2f}")
+
+    def test_focus_ring_contrast(self):
+        outline = css_block(self.css, ":focus-visible")["outline"].split()[-1]
+        for theme in ("light", "dark"):
+            t = theme_tokens(self.css, theme)
+            ratio = contrast(resolve(outline, t), resolve("var(--bg)", t))
+            self.assertGreaterEqual(ratio, 3.0, f"{theme}: {ratio:.2f}")
 
     def test_no_external_resources(self):
         self.assertNotIn("@import", self.css)
@@ -218,9 +308,9 @@ class ThemeTests(unittest.TestCase):
         # `.shot img` sets display:block, so the variant rules must be at least as
         # specific (`.shot img.shot-dark`) or the hidden variant still shows.
         self.assertEqual(css_block(css, ".shot img.shot-dark").get("display"), "none")
-        for pre in [':root[data-theme="dark"]', ':root:not([data-theme="light"])']:
-            self.assertEqual(css_block(css, pre + " .shot img.shot-dark").get("display"), "block", pre)
-            self.assertEqual(css_block(css, pre + " .shot img.shot-light").get("display"), "none", pre)
+        for pre, media in DARK_CONTEXTS:
+            self.assertEqual(css_block(css, pre + " .shot img.shot-dark", media).get("display"), "block", pre)
+            self.assertEqual(css_block(css, pre + " .shot img.shot-light", media).get("display"), "none", pre)
 
 
 EXPECTED = ["hero-dark.png", "hero-light.png", "tool-json.png", "tool-url.png",
@@ -242,9 +332,9 @@ class AssetTests(unittest.TestCase):
         self.assertEqual(css_block(css, ".shot.is-missing .shot-ph").get("display"), "grid")
         # hero: placeholder appears when the variant for the active theme failed
         self.assertEqual(css_block(css, ".shot.is-missing-light .shot-ph").get("display"), "grid")
-        for pre in [':root[data-theme="dark"]', ':root:not([data-theme="light"])']:
-            self.assertEqual(css_block(css, pre + " .shot.is-missing-dark .shot-ph").get("display"), "grid", pre)
-            self.assertEqual(css_block(css, pre + " .shot.is-missing-light:not(.is-missing-dark) .shot-ph").get("display"), "none", pre)
+        for pre, media in DARK_CONTEXTS:
+            self.assertEqual(css_block(css, pre + " .shot.is-missing-dark .shot-ph", media).get("display"), "grid", pre)
+            self.assertEqual(css_block(css, pre + " .shot.is-missing-light:not(.is-missing-dark) .shot-ph", media).get("display"), "none", pre)
 
     def test_asset_readme_lists_files(self):
         readme = load("site/assets/README.md")
@@ -252,6 +342,13 @@ class AssetTests(unittest.TestCase):
             self.assertIn(f, readme)
         self.assertIn("2880×1800", readme)
         self.assertIn("1600×1000", readme)
+
+    def test_404_page(self):
+        # Without a top-level 404.html, Cloudflare Pages serves index.html (200) for every
+        # unknown path. Root-relative links keep the page styled at any depth.
+        p = parse_html(load("site/404.html"))
+        self.assertTrue(p.find_all("link", rel="stylesheet", href="/styles.css"))
+        self.assertTrue(p.find_all("a", href="/"))
 
     def test_headers(self):
         h = load("site/_headers")

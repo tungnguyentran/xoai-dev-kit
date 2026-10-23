@@ -18,6 +18,8 @@
   --accent-ink:  oklch(0.99 0.01 160);
   --accent-soft: oklch(0.58 0.15 152 / 0.12);
   --accent-line: oklch(0.58 0.15 152 / 0.38);
+  /* Site-only: a deeper green so white button text passes WCAG AA (app accent is 3.9:1). */
+  --btn-primary: oklch(0.52 0.14 152);
   --shadow: 0 24px 60px -24px oklch(0.27 0.012 160 / 0.25);
 
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
@@ -41,6 +43,7 @@
     --accent-ink:  oklch(0.22 0.05 160);
     --accent-soft: oklch(0.82 0.16 152 / 0.14);
     --accent-line: oklch(0.82 0.16 152 / 0.40);
+    --btn-primary: oklch(0.82 0.16 152);
     --shadow: 0 24px 60px -24px oklch(0 0 0 / 0.6);
   }
 }
@@ -61,6 +64,7 @@
   --accent-ink:  oklch(0.22 0.05 160);
   --accent-soft: oklch(0.82 0.16 152 / 0.14);
   --accent-line: oklch(0.82 0.16 152 / 0.40);
+  --btn-primary: oklch(0.82 0.16 152);
   --shadow: 0 24px 60px -24px oklch(0 0 0 / 0.6);
 }
 
@@ -86,7 +90,7 @@ a:hover { text-decoration: underline; }
 h1, h2, h3 { line-height: 1.15; margin: 0; letter-spacing: -0.02em; }
 
 :focus-visible {
-  outline: 3px solid var(--accent-line);
+  outline: 3px solid var(--accent);
   outline-offset: 2px;
   border-radius: 6px;
 }
@@ -118,7 +122,7 @@ h1, h2, h3 { line-height: 1.15; margin: 0; letter-spacing: -0.02em; }
 }
 .btn:hover { text-decoration: none; transform: translateY(-1px); }
 
-.btn-primary { background: var(--accent); color: var(--accent-ink); }
+.btn-primary { background: var(--btn-primary); color: var(--accent-ink); }
 .btn-secondary { background: var(--panel); color: var(--text); border-color: var(--border); }
 .btn-secondary:hover { background: var(--panel-2); }
 .btn-sm { min-height: 34px; padding: 0 14px; font-size: 14px; border-radius: 8px; }
