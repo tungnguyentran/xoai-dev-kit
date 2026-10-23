@@ -6,6 +6,13 @@
   <title>DevKit for macOS</title>
   <meta name="description" content="A fast, native developer toolkit for macOS — JSON, URL, Base64 and JWT in one app.">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <script>
+    // Apply a saved theme before first paint so the page never flashes the wrong one.
+    try {
+      var saved = localStorage.getItem('devkit-theme');
+      if (saved === 'dark' || saved === 'light') document.documentElement.dataset.theme = saved;
+    } catch (e) {}
+  </script>
   <link rel="stylesheet" href="styles.css">
   <script src="theme.js" defer></script>
 </head>
@@ -42,6 +49,8 @@
       <figure id="hero-shot" class="window">
         <div class="window-bar" aria-hidden="true"><span></span><span></span><span></span></div>
         <div class="shot shot-hero">
+          <img class="shot-dark" src="assets/hero-dark.png" alt="DevKit app window in dark mode, formatting JSON">
+          <img class="shot-light" src="assets/hero-light.png" alt="DevKit app window in light mode, formatting JSON">
           <div class="shot-ph">DevKit</div>
         </div>
       </figure>

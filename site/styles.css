@@ -203,6 +203,16 @@ h1, h2, h3 { line-height: 1.15; margin: 0; letter-spacing: -0.02em; }
 }
 .shot:not(:has(img)) .shot-ph { display: grid; }
 
+/* Hero shows the screenshot that matches the effective theme.
+   Selectors include `.shot img` so they out-rank the `.shot img` rule above. */
+.shot img.shot-dark { display: none; }
+:root[data-theme="dark"] .shot img.shot-dark { display: block; }
+:root[data-theme="dark"] .shot img.shot-light { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .shot img.shot-dark { display: block; }
+  :root:not([data-theme="light"]) .shot img.shot-light { display: none; }
+}
+
 /* ---- Tools ---- */
 .tools { padding-top: 72px; padding-bottom: 40px; scroll-margin-top: 60px; }
 .tools h2, .footer-cta h2 { font-size: clamp(28px, 4vw, 40px); text-align: center; }

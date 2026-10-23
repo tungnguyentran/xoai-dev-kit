@@ -183,5 +183,40 @@ class StyleTests(unittest.TestCase):
         self.assertNotIn("url(http", self.css)
 
 
+class ThemeTests(unittest.TestCase):
+    def setUp(self):
+        self.html = load("site/index.html")
+        self.p = parse_html(self.html)
+
+    def test_head_script_applies_stored_theme(self):
+        head = self.html.split("</head>")[0]
+        self.assertIn("devkit-theme", head)
+        self.assertIn("try", head)
+        # only the two known values are applied (whitelist), anything else is ignored
+        self.assertRegex(head, r"['\"]dark['\"]\s*\|\|.*['\"]light['\"]|===\s*['\"]light['\"]")
+        # runs before the stylesheet so there is no flash of the wrong theme
+        self.assertLess(head.index("devkit-theme"), head.index("styles.css"))
+
+    def test_toggle_hidden_without_js(self):
+        btn = self.p.find_all("button", id="theme-toggle")[0]
+        self.assertIn("hidden", btn.attrs)
+        self.assertIn("hidden", load("site/theme.js"))  # theme.js un-hides it
+
+    def test_hero_has_both_variants(self):
+        self.assertTrue(self.p.find_all("img", src="assets/hero-dark.png", class_="shot-dark"))
+        self.assertTrue(self.p.find_all("img", src="assets/hero-light.png", class_="shot-light"))
+        for img in self.p.find_all("img"):
+            self.assertTrue(img.attrs.get("alt"), img.attrs.get("src"))
+
+    def test_hero_variant_visibility_follows_theme(self):
+        css = load("site/styles.css")
+        # `.shot img` sets display:block, so the variant rules must be at least as
+        # specific (`.shot img.shot-dark`) or the hidden variant still shows.
+        self.assertEqual(css_block(css, ".shot img.shot-dark").get("display"), "none")
+        for pre in [':root[data-theme="dark"]', ':root:not([data-theme="light"])']:
+            self.assertEqual(css_block(css, pre + " .shot img.shot-dark").get("display"), "block", pre)
+            self.assertEqual(css_block(css, pre + " .shot img.shot-light").get("display"), "none", pre)
+
+
 if __name__ == "__main__":
     unittest.main()
