@@ -178,6 +178,11 @@ class StyleTests(unittest.TestCase):
     def test_body_has_background(self):
         self.assertRegex(css_block(self.css, "body").get("background", ""), r"var\(--bg\)")
 
+    def test_small_text_meets_contrast(self):
+        # --text-faint fails WCAG AA (≈3:1) for small text in dark mode; Lighthouse flagged these.
+        for sel in [".meta", ".footer-links"]:
+            self.assertEqual(css_block(self.css, sel).get("color"), "var(--text-dim)", sel)
+
     def test_no_external_resources(self):
         self.assertNotIn("@import", self.css)
         self.assertNotIn("url(http", self.css)

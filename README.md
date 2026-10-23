@@ -77,6 +77,24 @@ XoaiUtility/
 
 > **Note:** `Item.swift` and the `ModelContainer` set up in `XoaiUtilityApp` are leftover Xcode-template SwiftData scaffolding — they are not used by any feature.
 
+## Website
+
+The landing page lives in `site/`: plain HTML/CSS/JS with no build step.
+
+```bash
+# Preview locally at http://localhost:8000
+python3 -m http.server -d site 8000
+
+# Run the site checks (stdlib only; also verifies CSS colors match Theme.swift)
+python3 -m unittest discover -s site-tests -p 'check_*.py' -v
+```
+
+Screenshots go in `site/assets/`. See [`site/assets/README.md`](site/assets/README.md) for the expected files and sizes. Until they're added, each slot shows a placeholder.
+
+**Deploying (Cloudflare Pages):** Workers & Pages → Create → Pages → Connect to Git → this repo. Production branch `main`, framework preset *None*, build command *(empty)*, build output directory `site`. Pushes to `main` deploy automatically, and pull requests get preview URLs. Without Git integration: `npx wrangler pages deploy site --project-name devkit`.
+
+The Download button points to `releases/latest`, so it only works once the repo is public and a GitHub Release with a `.dmg`/`.zip` is published.
+
 ## License
 
 See [LICENSE](LICENSE).
