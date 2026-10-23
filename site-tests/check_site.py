@@ -122,5 +122,66 @@ class ContentTests(unittest.TestCase):
         self.assertTrue(self.p.find_all("link", rel="icon", href="favicon.svg"))
 
 
+TOKENS = ["bg", "bgSide", "panel", "panel2", "border", "borderSoft", "text", "textDim",
+          "textFaint", "accent", "accentInk", "accentSoft", "accentLine"]
+
+
+def swift_tokens(which: str) -> dict:
+    """Parse `static let dark/light = ThemeTokens(...)` in Theme.swift into
+    {name: "oklch(L C H)" | "oklch(L C H / A)"}."""
+    src = load("XoaiUtility/Theme.swift")
+    block = re.search(r"static let %s = ThemeTokens\((.*?)\n\s*\)" % which, src, re.S).group(1)
+    out = {}
+    for name, args in re.findall(r"(\w+):\s*Color\(oklch:\s*([^)]*)\)", block):
+        n = [a.strip() for a in args.split(",")]
+        out[name] = f"oklch({n[0]} {n[1]} {n[2]}" + (f" / {n[3]})" if len(n) == 4 else ")")
+    return out
+
+
+def css_block(css: str, selector: str) -> dict:
+    """Return {--prop / prop: value} declared directly in the first block whose
+    selector list is exactly `selector`."""
+    css = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+    for m in re.finditer(r"([^{}]+)\{([^{}]*)\}", css):
+        if m.group(1).strip() == selector:
+            return {k.strip(): v.strip() for k, v in
+                    (d.split(":", 1) for d in m.group(2).split(";") if ":" in d)}
+    raise AssertionError(f"no CSS block for {selector!r}")
+
+
+def kebab(name: str) -> str:
+    return "--" + re.sub(r"([A-Z0-9])", lambda m: "-" + m.group(1).lower(), name)
+
+
+def norm(value: str) -> str:
+    def num(m):
+        s = m.group(0)
+        if "." in s:
+            s = s.rstrip("0").rstrip(".")
+        return s or "0"
+    return re.sub(r"\d+\.?\d*", num, re.sub(r"\s+", " ", value.strip()))
+
+
+class StyleTests(unittest.TestCase):
+    def setUp(self):
+        self.css = load("site/styles.css")
+
+    def test_tokens_match_theme_swift(self):
+        light, dark = swift_tokens("light"), swift_tokens("dark")
+        self.assertEqual(len(light), len(dark))
+        for blk, src in [(":root", light), (':root[data-theme="dark"]', dark),
+                         (':root:not([data-theme="light"])', dark)]:
+            got = css_block(self.css, blk)
+            for t in TOKENS:
+                self.assertEqual(norm(got[kebab(t)]), norm(src[t]), f"{blk} {t}")
+
+    def test_body_has_background(self):
+        self.assertRegex(css_block(self.css, "body").get("background", ""), r"var\(--bg\)")
+
+    def test_no_external_resources(self):
+        self.assertNotIn("@import", self.css)
+        self.assertNotIn("url(http", self.css)
+
+
 if __name__ == "__main__":
     unittest.main()

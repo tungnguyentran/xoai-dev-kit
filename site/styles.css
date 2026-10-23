@@ -1,0 +1,243 @@
+/* DevKit landing page.
+   Color tokens are copied verbatim from XoaiUtility/Theme.swift (oklch), so the
+   site and the app share one palette. site-tests/check_site.py keeps them in sync. */
+
+/* ---- Tokens: light ---- */
+:root {
+  color-scheme: light;
+  --bg:          oklch(0.975 0.003 160);
+  --bg-side:     oklch(0.955 0.004 160);
+  --panel:       oklch(1 0 0);
+  --panel-2:     oklch(0.985 0.003 160);
+  --border:      oklch(0.89 0.005 160);
+  --border-soft: oklch(0.925 0.004 160);
+  --text:        oklch(0.27 0.012 160);
+  --text-dim:    oklch(0.50 0.01 160);
+  --text-faint:  oklch(0.64 0.008 160);
+  --accent:      oklch(0.58 0.15 152);
+  --accent-ink:  oklch(0.99 0.01 160);
+  --accent-soft: oklch(0.58 0.15 152 / 0.12);
+  --accent-line: oklch(0.58 0.15 152 / 0.38);
+  --shadow: 0 24px 60px -24px oklch(0.27 0.012 160 / 0.25);
+
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+/* ---- Tokens: dark (OS preference, unless the visitor picked light) ---- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg:          oklch(0.175 0.004 160);
+    --bg-side:     oklch(0.205 0.004 160);
+    --panel:       oklch(0.215 0.005 160);
+    --panel-2:     oklch(0.245 0.005 160);
+    --border:      oklch(0.30 0.006 160);
+    --border-soft: oklch(0.255 0.005 160);
+    --text:        oklch(0.945 0.004 160);
+    --text-dim:    oklch(0.66 0.007 160);
+    --text-faint:  oklch(0.50 0.006 160);
+    --accent:      oklch(0.82 0.16 152);
+    --accent-ink:  oklch(0.22 0.05 160);
+    --accent-soft: oklch(0.82 0.16 152 / 0.14);
+    --accent-line: oklch(0.82 0.16 152 / 0.40);
+    --shadow: 0 24px 60px -24px oklch(0 0 0 / 0.6);
+  }
+}
+
+/* ---- Tokens: dark (picked explicitly with the toggle) ---- */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg:          oklch(0.175 0.004 160);
+  --bg-side:     oklch(0.205 0.004 160);
+  --panel:       oklch(0.215 0.005 160);
+  --panel-2:     oklch(0.245 0.005 160);
+  --border:      oklch(0.30 0.006 160);
+  --border-soft: oklch(0.255 0.005 160);
+  --text:        oklch(0.945 0.004 160);
+  --text-dim:    oklch(0.66 0.007 160);
+  --text-faint:  oklch(0.50 0.006 160);
+  --accent:      oklch(0.82 0.16 152);
+  --accent-ink:  oklch(0.22 0.05 160);
+  --accent-soft: oklch(0.82 0.16 152 / 0.14);
+  --accent-line: oklch(0.82 0.16 152 / 0.40);
+  --shadow: 0 24px 60px -24px oklch(0 0 0 / 0.6);
+}
+
+/* ---- Base ---- */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.6 var(--font);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+img { max-width: 100%; }
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+h1, h2, h3 { line-height: 1.15; margin: 0; letter-spacing: -0.02em; }
+
+:focus-visible {
+  outline: 3px solid var(--accent-line);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.container {
+  max-width: 1120px;
+  margin-inline: auto;
+  padding-inline: 16px;
+}
+
+@media (min-width: 720px) {
+  .container { padding-inline: 32px; }
+}
+
+/* ---- Buttons ---- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 20px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font-weight: 600;
+  font-size: 15px;
+  white-space: nowrap;
+  transition: transform 0.12s ease, background-color 0.12s ease;
+}
+.btn:hover { text-decoration: none; transform: translateY(-1px); }
+
+.btn-primary { background: var(--accent); color: var(--accent-ink); }
+.btn-secondary { background: var(--panel); color: var(--text); border-color: var(--border); }
+.btn-secondary:hover { background: var(--panel-2); }
+.btn-sm { min-height: 34px; padding: 0 14px; font-size: 14px; border-radius: 8px; }
+
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text-dim);
+  font-size: 16px;
+  cursor: pointer;
+}
+.icon-btn:hover { color: var(--text); background: var(--panel-2); }
+.icon-btn[hidden] { display: none; }
+
+/* ---- Nav ---- */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: color-mix(in oklch, var(--bg) 85%, transparent);
+  backdrop-filter: saturate(1.4) blur(12px);
+  -webkit-backdrop-filter: saturate(1.4) blur(12px);
+  border-bottom: 1px solid var(--border-soft);
+}
+.nav-inner { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 12px; }
+.brand { display: inline-flex; align-items: center; gap: 10px; color: var(--text); font-weight: 700; font-size: 17px; }
+.brand:hover { text-decoration: none; }
+.nav-links { display: flex; align-items: center; gap: 16px; }
+.nav-secondary { color: var(--text-dim); font-size: 15px; }
+.nav-secondary:hover { color: var(--text); text-decoration: none; }
+
+@media (max-width: 479px) {
+  .nav-secondary { display: none; }
+  .nav-links { gap: 10px; }
+}
+
+/* ---- Hero ---- */
+.hero { text-align: center; padding-top: 72px; padding-bottom: 56px; }
+.hero h1 { font-size: clamp(40px, 8vw, 72px); font-weight: 800; }
+.lede { max-width: 620px; margin: 20px auto 0; font-size: clamp(17px, 2.2vw, 20px); color: var(--text-dim); }
+.cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 32px; }
+.meta { margin: 16px 0 0; font-size: 14px; color: var(--text-faint); }
+
+.window {
+  margin: 56px auto 0;
+  max-width: 1040px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.window-bar { display: flex; gap: 8px; padding: 12px 14px; background: var(--bg-side); border-bottom: 1px solid var(--border-soft); }
+.window-bar span { width: 12px; height: 12px; border-radius: 50%; background: var(--border); }
+.window .shot { border: 0; border-radius: 0; }
+
+/* ---- Screenshot slots ---- */
+.shot {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.shot img { width: 100%; height: 100%; display: block; object-fit: cover; object-position: top left; }
+.shot-ph {
+  display: none;
+  position: absolute;
+  inset: 0;
+  place-items: center;
+  color: var(--text-faint);
+  font: 600 15px/1 var(--mono);
+  background:
+    repeating-linear-gradient(135deg, transparent 0 14px, var(--border-soft) 14px 15px),
+    var(--panel-2);
+}
+.shot:not(:has(img)) .shot-ph { display: grid; }
+
+/* ---- Tools ---- */
+.tools { padding-top: 72px; padding-bottom: 40px; scroll-margin-top: 60px; }
+.tools h2, .footer-cta h2 { font-size: clamp(28px, 4vw, 40px); text-align: center; }
+.tool-grid { display: grid; grid-template-columns: 1fr; gap: 20px; margin-top: 40px; }
+@media (min-width: 720px) {
+  .tool-grid { grid-template-columns: repeat(2, 1fr); gap: 24px; }
+}
+.tool-card {
+  padding: 16px 16px 24px;
+  border-radius: 16px;
+  border: 1px solid var(--border-soft);
+  background: var(--panel);
+}
+.tool-card h3 { margin-top: 20px; font-size: 20px; }
+.tool-card p { margin: 8px 0 0; color: var(--text-dim); }
+
+/* ---- Highlights ---- */
+.highlights { padding-top: 40px; padding-bottom: 80px; }
+.highlight-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+@media (min-width: 560px) { .highlight-list { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 960px) { .highlight-list { grid-template-columns: repeat(4, 1fr); } }
+.highlight-list li { padding: 20px; border-radius: 14px; background: var(--accent-soft); border: 1px solid var(--accent-line); }
+.highlight-list h3 { font-size: 17px; }
+.highlight-list p { margin: 6px 0 0; color: var(--text-dim); font-size: 15px; }
+
+/* ---- Footer ---- */
+.footer { border-top: 1px solid var(--border-soft); background: var(--bg-side); }
+.footer-inner { padding-top: 64px; padding-bottom: 40px; text-align: center; }
+.footer-cta .btn { margin-top: 24px; }
+.footer-links { margin: 48px 0 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; color: var(--text-faint); font-size: 14px; }
+.footer-links a { color: var(--text-dim); }
