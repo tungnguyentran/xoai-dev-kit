@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <ellipse cx="65" cy="21" rx="13" ry="6.4" transform="rotate(-40 65 21)" fill="oklch(0.80 0.16 152)"/>
+  <path d="M55 30 C57 25 60 22 63 20" fill="none" stroke="oklch(0.56 0.12 152)" stroke-width="3.2" stroke-linecap="round"/>
+  <path d="M59 26 C40 23 22 37 20 56 C18 75 34 89 52 89 C71 89 85 74 82 55 C79 39 72 28 59 26 Z" fill="oklch(0.78 0.155 64)"/>
+  <polyline points="44,48 55,58 44,68" fill="none" stroke="oklch(0.31 0.055 56)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

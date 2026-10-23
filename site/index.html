@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DevKit for macOS</title>
+  <meta name="description" content="A fast, native developer toolkit for macOS — JSON, URL, Base64 and JWT in one app.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script src="theme.js" defer></script>
+</head>
+<body>
+  <header class="nav">
+    <div class="container nav-inner">
+      <a class="brand" href="#top" aria-label="DevKit home">
+        <svg class="mark" width="28" height="28" viewBox="0 0 100 100" aria-hidden="true">
+          <ellipse cx="65" cy="21" rx="13" ry="6.4" transform="rotate(-40 65 21)" fill="oklch(0.80 0.16 152)"/>
+          <path d="M55 30 C57 25 60 22 63 20" fill="none" stroke="oklch(0.56 0.12 152)" stroke-width="3.2" stroke-linecap="round"/>
+          <path d="M59 26 C40 23 22 37 20 56 C18 75 34 89 52 89 C71 89 85 74 82 55 C79 39 72 28 59 26 Z" fill="oklch(0.78 0.155 64)"/>
+          <polyline points="44,48 55,58 44,68" fill="none" stroke="oklch(0.31 0.055 56)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>DevKit</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary">
+        <a class="nav-secondary" href="#features">Features</a>
+        <a class="nav-secondary" href="https://github.com/tungnguyentran/xoai-dev-kit" rel="noopener">GitHub</a>
+        <button id="theme-toggle" class="icon-btn" type="button" aria-label="Toggle dark mode" hidden></button>
+        <a class="btn btn-primary btn-sm" href="https://github.com/tungnguyentran/xoai-dev-kit/releases/latest" rel="noopener">Download</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero container">
+      <h1>Paste. Transform. Copy.</h1>
+      <p class="lede">A fast, native developer toolkit for macOS — JSON, URL, Base64 and JWT in one app.</p>
+      <div class="cta">
+        <a class="btn btn-primary" href="https://github.com/tungnguyentran/xoai-dev-kit/releases/latest" rel="noopener">Download for macOS</a>
+        <a class="btn btn-secondary" href="https://github.com/tungnguyentran/xoai-dev-kit" rel="noopener">View on GitHub</a>
+      </div>
+      <p class="meta">Free &amp; open source · macOS 26.5+</p>
+      <figure id="hero-shot" class="window">
+        <div class="window-bar" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div class="shot shot-hero">
+          <div class="shot-ph">DevKit</div>
+        </div>
+      </figure>
+    </section>
+
+    <section id="features" class="tools container" aria-labelledby="features-title">
+      <h2 id="features-title">Four tools you reach for every day</h2>
+      <div class="tool-grid">
+        <article class="tool-card">
+          <div class="shot">
+            <img src="assets/tool-json.png" alt="DevKit JSON Formatter showing a collapsible JSON tree">
+            <div class="shot-ph">JSON Formatter</div>
+          </div>
+          <h3>JSON Formatter</h3>
+          <p>Format and prettify with 2-space, 4-space or tab indent, explore a collapsible tree, and search. Numbers keep their full precision.</p>
+        </article>
+        <article class="tool-card">
+          <div class="shot">
+            <img src="assets/tool-url.png" alt="DevKit URL decoder showing query parameters as a key/value table">
+            <div class="shot-ph">URL Encode / Decode</div>
+          </div>
+          <h3>URL Encode / Decode</h3>
+          <p>Percent-encode and decode in one click. Flip to Table view to read query parameters as a key/value list.</p>
+        </article>
+        <article class="tool-card">
+          <div class="shot">
+            <img src="assets/tool-base64.png" alt="DevKit Base64 tool encoding UTF-8 text">
+            <div class="shot-ph">Base64</div>
+          </div>
+          <h3>Base64</h3>
+          <p>Encode and decode UTF-8 text, emoji and all.</p>
+        </article>
+        <article class="tool-card">
+          <div class="shot">
+            <img src="assets/tool-jwt.png" alt="DevKit JWT decoder showing header, payload and signature">
+            <div class="shot-ph">JWT Decode</div>
+          </div>
+          <h3>JWT Decode</h3>
+          <p>Inspect a token's header, payload and signature, with claims shown in a readable form.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="highlights container" aria-label="Highlights">
+      <ul class="highlight-list">
+        <li><h3>History</h3><p>Recent inputs are saved per tool. Click one to load it back.</p></li>
+        <li><h3>Dark &amp; Light</h3><p>Switch themes anytime.</p></li>
+        <li><h3>Native &amp; private</h3><p>Built with SwiftUI. Works offline, no tracking.</p></li>
+        <li><h3>English &amp; Vietnamese</h3><p>The whole interface is fully localized.</p></li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div class="footer-cta">
+        <h2>Ready to paste?</h2>
+        <a class="btn btn-primary" href="https://github.com/tungnguyentran/xoai-dev-kit/releases/latest" rel="noopener">Download for macOS</a>
+      </div>
+      <p class="footer-links">
+        <a href="https://github.com/tungnguyentran/xoai-dev-kit" rel="noopener">GitHub</a>
+        <span aria-hidden="true">·</span>
+        <a href="https://github.com/tungnguyentran/xoai-dev-kit/blob/main/LICENSE" rel="noopener">License</a>
+        <span aria-hidden="true">·</span>
+        <span>Made with 🥭</span>
+      </p>
+    </div>
+  </footer>
+</body>
+</html>
